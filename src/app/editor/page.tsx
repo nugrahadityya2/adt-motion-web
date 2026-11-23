@@ -37,6 +37,13 @@ import {
   SHOWCASE_PRESETS,
 } from "@/lib/presets";
 import { exportMotionVideo, exportToGif } from "@/lib/exporter";
+import {
+  getDailyExportLimit,
+  getRemainingExports,
+  getUpgradeUrl,
+  isExportLimitEnabled,
+  recordExportUsage,
+} from "@/lib/export-quota";
 
 const FONTS: FontOption[] = [
   "JetBrains Mono",
@@ -83,6 +90,7 @@ function EditorWorkspace() {
     notice: string | null;
     error: string | null;
   }>({ active: false, progress: 0, notice: null, error: null });
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const activeTemplateMeta =
     TEMPLATE_META.find((t) => t.id === config.template) ?? TEMPLATE_META[0];
@@ -152,12 +160,18 @@ function EditorWorkspace() {
   };
 
   const handleExport = async () => {
+    if (isExportLimitEnabled() && getRemainingExports() <= 0) {
+      setShowLimitModal(true);
+      return;
+    }
+
     setExportState({ active: true, progress: 0, notice: null, error: null });
     try {
       if (exportFormat === "gif") {
         await exportToGif(config, exportRes, exportFps, (progress) =>
           setExportState((s) => ({ ...s, progress }))
         );
+        recordExportUsage();
         setExportState({ active: false, progress: 100, notice: "GIF exported!", error: null });
       } else {
         const res = await exportMotionVideo(
@@ -167,6 +181,7 @@ function EditorWorkspace() {
           exportFps,
           (progress) => setExportState((s) => ({ ...s, progress }))
         );
+        recordExportUsage();
         const note =
           exportFormat === "mp4" && res.actualFormat === "webm"
             ? "Browser does not support native MP4 recording; exported as WebM instead."
@@ -1021,6 +1036,48 @@ function EditorWorkspace() {
           </div>
         </aside>
       </div>
+      {/* Export Limit Modal (only shown when NEXT_PUBLIC_ENABLE_EXPORT_LIMIT=true) */}
+      {showLimitModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="limit-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div className="bento-card w-full max-w-md rounded-2xl p-6 shadow-2xl">
+            <span className="inline-block rounded-xl bg-[#C2410C]/15 px-2.5 py-1 font-mono text-[10px] font-semibold text-[#C2410C] uppercase dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
+              Daily Limit Reached
+            </span>
+            <h2
+              id="limit-modal-title"
+              className="mt-3 font-display text-2xl font-bold tracking-tight"
+            >
+              Free export quota used ({getDailyExportLimit()}/day)
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              You have used all {getDailyExportLimit()} free exports for today.
+              Upgrade to Pro for unlimited WebM, MP4, and GIF exports.
+            </p>
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLimitModal(false)}
+                className="btn-tactile rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 font-display text-xs font-semibold text-[var(--text-main)]"
+              >
+                Close
+              </button>
+              <a
+                href={getUpgradeUrl()}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-tactile rounded-full bg-[#C2410C] px-5 py-2 font-display text-xs font-bold text-white hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
+              >
+                Upgrade to Pro →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
