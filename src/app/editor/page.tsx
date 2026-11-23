@@ -24,6 +24,7 @@ import {
   ExportFps,
   ExportResolution,
   FontOption,
+  FontWeightOption,
   JitterAxisOption,
   MotionConfig,
   MotionTemplate,
@@ -40,12 +41,18 @@ import { exportMotionVideo, exportToGif } from "@/lib/exporter";
 const FONTS: FontOption[] = [
   "JetBrains Mono",
   "Outfit",
+  "Plus Jakarta Sans",
   "Space Grotesk",
   "Instrument Serif",
   "Syne",
   "IBM Plex Mono",
   "Bebas Neue",
   "Playfair Display",
+  "Anton",
+  "DM Serif Display",
+  "Oswald",
+  "Bricolage Grotesque",
+  "Cormorant Garamond",
 ];
 
 const BG_PRESETS: { label: string; value: string }[] = [
@@ -351,14 +358,14 @@ function EditorWorkspace() {
                       className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <select
                       aria-label="Font family"
                       value={config.font}
                       onChange={(e) =>
                         updateConfig("font", e.target.value as FontOption)
                       }
-                      className="h-full w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
+                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
                     >
                       {FONTS.map((f) => (
                         <option key={f} value={f}>
@@ -366,6 +373,41 @@ function EditorWorkspace() {
                         </option>
                       ))}
                     </select>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        aria-label="Font weight"
+                        value={config.fontWeight}
+                        onChange={(e) =>
+                          updateConfig(
+                            "fontWeight",
+                            e.target.value as FontWeightOption
+                          )
+                        }
+                        className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1.5 font-mono text-[10px] text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
+                      >
+                        <option value="400">Regular 400</option>
+                        <option value="500">Medium 500</option>
+                        <option value="700">Bold 700</option>
+                        <option value="800">Extra 800</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateConfig(
+                            "fontStyle",
+                            config.fontStyle === "italic" ? "normal" : "italic"
+                          )
+                        }
+                        className={`rounded-xl border px-2.5 py-1.5 font-serif text-xs italic transition-colors ${
+                          config.fontStyle === "italic"
+                            ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                            : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                        }`}
+                        title="Toggle Italic"
+                      >
+                        I
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -546,15 +588,54 @@ function EditorWorkspace() {
             />
 
             {config.mode === "text" && (
-              <EditorRangeSlider
-                label="Font Size"
-                value={config.fontSize}
-                min={28}
-                max={160}
-                step={2}
-                unit="px"
-                onChange={(v) => updateConfig("fontSize", v)}
-              />
+              <div className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
+                    Typography
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateConfig("autoFit", !config.autoFit)}
+                    className={`rounded-lg border px-2 py-0.5 font-mono text-[10px] uppercase transition-colors ${
+                      config.autoFit
+                        ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                    }`}
+                  >
+                    Auto-Fit: {config.autoFit ? "ON" : "OFF"}
+                  </button>
+                </div>
+
+                <EditorRangeSlider
+                  label="Font Size"
+                  value={config.fontSize}
+                  min={16}
+                  max={160}
+                  step={2}
+                  unit="px"
+                  onChange={(v) => updateConfig("fontSize", v)}
+                />
+
+                <EditorRangeSlider
+                  label="Kerning"
+                  value={config.letterSpacing}
+                  min={-8}
+                  max={32}
+                  step={1}
+                  unit="px"
+                  onChange={(v) => updateConfig("letterSpacing", v)}
+                />
+
+                <EditorRangeSlider
+                  label="Line Height"
+                  value={config.lineHeight}
+                  min={0.8}
+                  max={2}
+                  step={0.05}
+                  unit="×"
+                  onChange={(v) => updateConfig("lineHeight", v)}
+                />
+              </div>
             )}
 
             {/* Color & Background */}

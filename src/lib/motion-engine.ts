@@ -9,13 +9,22 @@ export { TEMPLATE_META };
 
 export type FontOption =
   | "Outfit"
+  | "Plus Jakarta Sans"
   | "JetBrains Mono"
   | "Space Grotesk"
   | "Instrument Serif"
   | "Syne"
   | "IBM Plex Mono"
   | "Bebas Neue"
-  | "Playfair Display";
+  | "Playfair Display"
+  | "Anton"
+  | "DM Serif Display"
+  | "Oswald"
+  | "Bricolage Grotesque"
+  | "Cormorant Garamond";
+
+export type FontWeightOption = "400" | "500" | "700" | "800";
+export type FontStyleOption = "normal" | "italic";
 
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:5";
 export type DirectionOption = "up" | "down" | "left" | "right";
@@ -32,8 +41,12 @@ export interface MotionConfig {
   svgMarkup: string;
   svgFileName: string;
   font: FontOption;
+  fontWeight: FontWeightOption;
+  fontStyle: FontStyleOption;
   fontSize: number;
   letterSpacing: number;
+  lineHeight: number;
+  autoFit: boolean;
   template: MotionTemplate;
   speed: number;
   stagger: number;
@@ -67,6 +80,7 @@ export const ASPECT_DIMENSIONS: Record<
 
 export const FONT_MAP: Record<FontOption, string> = {
   Outfit: "var(--font-display), 'Outfit', sans-serif",
+  "Plus Jakarta Sans": "var(--font-sans), 'Plus Jakarta Sans', sans-serif",
   "JetBrains Mono": "var(--font-mono), 'JetBrains Mono', monospace",
   "Space Grotesk": "var(--font-grotesk), 'Space Grotesk', sans-serif",
   "Instrument Serif": "var(--font-serif), 'Instrument Serif', serif",
@@ -74,6 +88,11 @@ export const FONT_MAP: Record<FontOption, string> = {
   "IBM Plex Mono": "var(--font-mono), 'IBM Plex Mono', monospace",
   "Bebas Neue": "var(--font-bebas), 'Bebas Neue', sans-serif",
   "Playfair Display": "var(--font-playfair), 'Playfair Display', serif",
+  Anton: "var(--font-anton), 'Anton', sans-serif",
+  "DM Serif Display": "var(--font-dm-serif), 'DM Serif Display', serif",
+  Oswald: "var(--font-oswald), 'Oswald', sans-serif",
+  "Bricolage Grotesque": "var(--font-bricolage), 'Bricolage Grotesque', sans-serif",
+  "Cormorant Garamond": "var(--font-cormorant), 'Cormorant Garamond', serif",
 };
 
 function easeInOutCubic(t: number): number {
@@ -117,33 +136,36 @@ function pseudoRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-function resolveCanvasFont(font: FontOption, sizePx: number): string {
+function resolveCanvasFont(
+  font: FontOption,
+  sizePx: number,
+  fontWeight: FontWeightOption = "500",
+  fontStyle: FontStyleOption = "normal"
+): string {
   let family: string = font;
   if (typeof document !== "undefined") {
-    const varName =
-      font === "Outfit"
-        ? "--font-display"
-        : font === "JetBrains Mono" || font === "IBM Plex Mono"
-          ? "--font-mono"
-          : font === "Space Grotesk"
-            ? "--font-grotesk"
-            : font === "Instrument Serif"
-              ? "--font-serif"
-              : font === "Syne"
-                ? "--font-syne"
-                : font === "Bebas Neue"
-                  ? "--font-bebas"
-                  : "--font-playfair";
+    const varMap: Record<FontOption, string> = {
+      Outfit: "--font-display",
+      "Plus Jakarta Sans": "--font-sans",
+      "JetBrains Mono": "--font-mono",
+      "Space Grotesk": "--font-grotesk",
+      "Instrument Serif": "--font-serif",
+      Syne: "--font-syne",
+      "IBM Plex Mono": "--font-mono",
+      "Bebas Neue": "--font-bebas",
+      "Playfair Display": "--font-playfair",
+      Anton: "--font-anton",
+      "DM Serif Display": "--font-dm-serif",
+      Oswald: "--font-oswald",
+      "Bricolage Grotesque": "--font-bricolage",
+      "Cormorant Garamond": "--font-cormorant",
+    };
     const computed = getComputedStyle(document.documentElement)
-      .getPropertyValue(varName)
+      .getPropertyValue(varMap[font])
       .trim();
     if (computed) family = computed;
   }
-  const weight =
-    font === "Outfit" || font === "Syne" || font === "Playfair Display"
-      ? "700"
-      : "500";
-  return `${weight} ${sizePx}px ${family}, sans-serif`;
+  return `${fontStyle} ${fontWeight} ${sizePx}px ${family}, sans-serif`;
 }
 
 interface UnitTransform {
@@ -495,7 +517,12 @@ function renderCircleTemplate(
   const cy = height / 2;
   const scale = Math.min(width, height) / 800;
   const fontSize = Math.max(16, config.fontSize * 0.72 * scale);
-  ctx.font = resolveCanvasFont(config.font, fontSize);
+  ctx.font = resolveCanvasFont(
+    config.font,
+    fontSize,
+    config.fontWeight,
+    config.fontStyle
+  );
 
   const singleLine = rawText.replace(/\n+/g, " • ") + " • ";
   const chars = Array.from(singleLine);
@@ -537,7 +564,12 @@ function renderMarqueeTemplate(
 ) {
   const scale = Math.min(width, height) / 800;
   const fontSize = Math.max(20, config.fontSize * 0.9 * scale);
-  ctx.font = resolveCanvasFont(config.font, fontSize);
+  ctx.font = resolveCanvasFont(
+    config.font,
+    fontSize,
+    config.fontWeight,
+    config.fontStyle
+  );
   const intensity = config.intensity / 100;
 
   const lines = rawText.split("\n").filter(Boolean);
@@ -604,11 +636,43 @@ function renderGlyphTemplate(
   t: number
 ) {
   const scale = Math.min(width, height) / 800;
-  const fontSize = Math.max(20, config.fontSize * scale);
-  ctx.font = resolveCanvasFont(config.font, fontSize);
+  let fontSize = Math.max(16, config.fontSize * scale);
+  let kerning = config.letterSpacing * scale;
+  ctx.font = resolveCanvasFont(
+    config.font,
+    fontSize,
+    config.fontWeight,
+    config.fontStyle
+  );
 
   const lines = rawText.split("\n");
-  const lineHeight = fontSize * 1.18;
+
+  // Auto-fit: scale down fontSize & kerning proportionally if any line exceeds 86% of canvas width
+  if (config.autoFit) {
+    let maxLineWidth = 0;
+    for (const line of lines) {
+      const chars = Array.from(line);
+      const w = chars.reduce(
+        (acc, ch) => acc + ctx.measureText(ch).width + kerning,
+        0
+      );
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
+    const maxAllowed = width * 0.86;
+    if (maxLineWidth > maxAllowed && maxLineWidth > 0) {
+      const fitRatio = maxAllowed / maxLineWidth;
+      fontSize = Math.max(12, fontSize * fitRatio);
+      kerning = kerning * fitRatio;
+      ctx.font = resolveCanvasFont(
+        config.font,
+        fontSize,
+        config.fontWeight,
+        config.fontStyle
+      );
+    }
+  }
+
+  const lineHeight = fontSize * config.lineHeight;
   const totalHeight = lines.length * lineHeight;
   const startY = height / 2 - totalHeight / 2 + lineHeight / 2;
   const totalUnits = Math.max(1, rawText.replace(/\n/g, "").length);
@@ -617,9 +681,7 @@ function renderGlyphTemplate(
 
   lines.forEach((line, lineIdx) => {
     const chars = Array.from(line);
-    const widths = chars.map(
-      (ch) => ctx.measureText(ch).width + config.letterSpacing * scale
-    );
+    const widths = chars.map((ch) => ctx.measureText(ch).width + kerning);
     const totalLineWidth = widths.reduce((acc, w) => acc + w, 0);
     let cursorX = width / 2 - totalLineWidth / 2;
     const baseY = startY + lineIdx * lineHeight;

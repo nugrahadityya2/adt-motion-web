@@ -8,6 +8,11 @@ import {
   Syne,
   Bebas_Neue,
   Playfair_Display,
+  Anton,
+  DM_Serif_Display,
+  Oswald,
+  Bricolage_Grotesque,
+  Cormorant_Garamond,
 } from "next/font/google";
 import "./globals.css";
 
@@ -56,8 +61,41 @@ const bebasNeue = Bebas_Neue({
 
 const playfairDisplay = Playfair_Display({
   weight: ["600", "700", "800"],
+  style: ["normal", "italic"],
   subsets: ["latin"],
   variable: "--font-playfair",
+});
+
+const anton = Anton({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-anton",
+});
+
+const dmSerifDisplay = DM_Serif_Display({
+  weight: "400",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-dm-serif",
+});
+
+const oswald = Oswald({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-oswald",
+});
+
+const bricolageGrotesque = Bricolage_Grotesque({
+  weight: ["400", "600", "800"],
+  subsets: ["latin"],
+  variable: "--font-bricolage",
+});
+
+const cormorantGaramond = Cormorant_Garamond({
+  weight: ["500", "700"],
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-cormorant",
 });
 
 export const metadata: Metadata = {
@@ -74,7 +112,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${outfit.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${spaceGrotesk.variable} ${syne.variable} ${bebasNeue.variable} ${playfairDisplay.variable} h-full antialiased`}
+      className={`dark ${outfit.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${spaceGrotesk.variable} ${syne.variable} ${bebasNeue.variable} ${playfairDisplay.variable} ${anton.variable} ${dmSerifDisplay.variable} ${oswald.variable} ${bricolageGrotesque.variable} ${cormorantGaramond.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-[var(--bg-page)] text-[var(--text-main)] font-sans selection:bg-[#FF6D29] selection:text-[#161316]">
