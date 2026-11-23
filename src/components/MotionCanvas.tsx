@@ -6,51 +6,60 @@ import {
   MotionConfig,
   renderMotionFrame,
 } from "@/lib/motion-engine";
+import { ParsedSvg, parseSvgToUnits } from "@/lib/svg-parser";
 
 interface MotionCanvasProps {
   config: MotionConfig;
   isPlaying?: boolean;
+  replayNonce?: number;
   externalCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
   onProgress?: (progress: number) => void;
+  onUnitsDetected?: (count: number) => void;
   className?: string;
 }
 
 export function MotionCanvas({
   config,
   isPlaying = true,
+  replayNonce = 0,
   externalCanvasRef,
   onProgress,
+  onUnitsDetected,
   className = "",
 }: MotionCanvasProps) {
   const internalRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRef = externalCanvasRef ?? internalRef;
-  const svgImgRef = useRef<HTMLImageElement | null>(null);
+  const parsedSvgRef = useRef<ParsedSvg | null>(null);
   const progressRef = useRef(0);
   const lastTimeRef = useRef<number | null>(null);
 
   const dims = ASPECT_DIMENSIONS[config.aspectRatio];
 
-  // Load SVG markup into an HTMLImageElement when in svg mode
+  // Reset progress when user clicks Replay or switches template
   useEffect(() => {
+    progressRef.current = 0;
+  }, [replayNonce, config.template]);
+
+  // Parse SVG into per-element units when in svg mode
+  useEffect(() => {
+    let cancelled = false;
     if (config.mode !== "svg" || !config.svgMarkup) {
-      svgImgRef.current = null;
+      parsedSvgRef.current = null;
+      const charCount = (config.text.trim() || "ADT MOTION").replace(/\s/g, "").length;
+      onUnitsDetected?.(charCount);
       return;
     }
 
-    const blob = new Blob([config.svgMarkup], {
-      type: "image/svg+xml;charset=utf-8",
+    parseSvgToUnits(config.svgMarkup).then((parsed) => {
+      if (cancelled) return;
+      parsedSvgRef.current = parsed;
+      onUnitsDetected?.(parsed.units.length);
     });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      svgImgRef.current = img;
-    };
-    img.src = url;
 
     return () => {
-      URL.revokeObjectURL(url);
+      cancelled = true;
     };
-  }, [config.mode, config.svgMarkup]);
+  }, [config.mode, config.svgMarkup, config.text, onUnitsDetected]);
 
   useEffect(() => {
     let rafId = 0;
@@ -71,7 +80,10 @@ export function MotionCanvas({
       lastTimeRef.current = now;
 
       if (isPlaying) {
-        const loopSec = Math.max(0.5, config.loopDurationSec / Math.max(0.2, config.speed));
+        const loopSec = Math.max(
+          0.5,
+          config.loopDurationSec / Math.max(0.2, config.speed)
+        );
         progressRef.current = (progressRef.current + dtSec / loopSec) % 1;
         onProgress?.(progressRef.current);
       }
@@ -82,7 +94,7 @@ export function MotionCanvas({
         dims.height,
         config,
         progressRef.current,
-        svgImgRef.current
+        parsedSvgRef.current
       );
 
       if (isPlaying) {
@@ -103,10 +115,10 @@ export function MotionCanvas({
       ref={canvasRef}
       width={dims.width}
       height={dims.height}
-      className={`block max-w-full max-h-full object-contain ${
+      className={`block max-h-full max-w-full object-contain ${
         config.bgColor === "transparent" ? "checkerboard-bg" : ""
       } ${className}`}
-      aria-label={`Motion preview: ${config.mode === "svg" ? "SVG graphic" : config.text}`}
+      aria-label={`Motion preview: ${config.mode === "svg" ? config.svgFileName : config.text}`}
     />
   );
 }
