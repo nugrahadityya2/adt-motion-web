@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import {
+  Outfit,
+  Plus_Jakarta_Sans,
+  JetBrains_Mono,
   Instrument_Serif,
-  IBM_Plex_Mono,
   Space_Grotesk,
   Syne,
   Bebas_Neue,
@@ -9,17 +11,29 @@ import {
 } from "next/font/google";
 import "./globals.css";
 
+const outfit = Outfit({
+  weight: ["600", "700", "800"],
+  subsets: ["latin"],
+  variable: "--font-display",
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
 const instrumentSerif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
   subsets: ["latin"],
   variable: "--font-serif",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  weight: ["400", "500", "600"],
-  subsets: ["latin"],
-  variable: "--font-mono",
 });
 
 const spaceGrotesk = Space_Grotesk({
@@ -47,7 +61,7 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "TypeMotion — SVG & Typography to Motion, No Timeline Required",
+  title: "ADT Motion — SVG & Typography to Motion, No Timeline Required",
   description:
     "Turn static typography or SVG marks into kinetic motion graphics in seconds. Adjust speed, stagger, intensity, and export to WebM or GIF.",
 };
@@ -60,9 +74,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${instrumentSerif.variable} ${ibmPlexMono.variable} ${spaceGrotesk.variable} ${syne.variable} ${bebasNeue.variable} ${playfairDisplay.variable} h-full antialiased`}
+      className={`dark ${outfit.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${spaceGrotesk.variable} ${syne.variable} ${bebasNeue.variable} ${playfairDisplay.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-[#F5F3EE] text-[#141413] font-mono selection:bg-[#2563EB] selection:text-white">
+      <body className="min-h-full flex flex-col bg-[var(--bg-page)] text-[var(--text-main)] font-sans selection:bg-[#FF6D29] selection:text-[#161316]">
         {children}
       </body>
     </html>

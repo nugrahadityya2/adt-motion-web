@@ -38,11 +38,11 @@ export function EditorRangeSlider({
       <div className="flex items-center justify-between text-[11px]">
         <label
           htmlFor={id}
-          className="font-medium tracking-wider text-[#5C5A54] uppercase"
+          className="font-mono font-medium tracking-wider text-[var(--text-muted)] uppercase"
         >
           {label}
         </label>
-        <span className="font-medium text-[#141413] tabular-nums">
+        <span className="font-mono font-medium text-[var(--text-main)] tabular-nums">
           {formattedValue}
         </span>
       </div>

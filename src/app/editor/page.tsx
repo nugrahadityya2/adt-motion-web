@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { MotionCanvas } from "@/components/MotionCanvas";
 import { EditorRangeSlider } from "@/components/EditorRangeSlider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   ASPECT_DIMENSIONS,
   AspectRatio,
@@ -30,20 +31,22 @@ import {
 import { exportToGif, exportToWebM } from "@/lib/exporter";
 
 const FONTS: FontOption[] = [
-  "IBM Plex Mono",
+  "JetBrains Mono",
+  "Outfit",
   "Space Grotesk",
   "Instrument Serif",
   "Syne",
+  "IBM Plex Mono",
   "Bebas Neue",
   "Playfair Display",
 ];
 
 const BG_PRESETS: { label: string; value: string }[] = [
   { label: "Transparent", value: "transparent" },
-  { label: "Cream", value: "#F5F3EE" },
-  { label: "White", value: "#FFFFFF" },
-  { label: "Charcoal", value: "#141413" },
-  { label: "Blue", value: "#2563EB" },
+  { label: "Obsidian", value: "#161316" },
+  { label: "Surface", value: "#1E1A1D" },
+  { label: "Light", value: "#F5F6F8" },
+  { label: "Orange", value: "#FF6D29" },
 ];
 
 function EditorWorkspace() {
@@ -59,7 +62,6 @@ function EditorWorkspace() {
     error: string | null;
   }>({ format: null, progress: 0, error: null });
 
-  // Hydrate from URL params if coming from Showcase
   useEffect(() => {
     const template = searchParams.get("template") as MotionTemplate | null;
     const text = searchParams.get("text");
@@ -142,21 +144,23 @@ function EditorWorkspace() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F5F3EE] text-[#141413]">
+    <div className="flex min-h-screen flex-col bg-[var(--bg-page)] text-[var(--text-main)]">
       {/* Editor Top Bar */}
-      <header className="sticky top-0 z-40 border-b border-[#D4CFC4] bg-[#F5F3EE]/95 backdrop-blur-sm">
-        <div className="flex h-14 flex-wrap items-center justify-between gap-2 px-4 sm:px-6">
+      <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 backdrop-blur-md">
+        <div className="flex h-16 flex-wrap items-center justify-between gap-2 px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="flex items-center gap-2 text-[#141413] hover:text-[#2563EB]"
+              className="flex items-center gap-2.5 text-[var(--text-main)] hover:text-[#C2410C] dark:hover:text-[#FF6D29]"
             >
-              <span className="inline-flex h-7 w-7 items-center justify-center border border-[#141413] bg-[#141413] text-[11px] font-semibold text-[#F5F3EE]">
-                TM
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#C2410C] font-display text-[10px] font-extrabold text-white dark:bg-[#FF6D29] dark:text-[#161316]">
+                ADT
               </span>
-              <span className="font-serif text-xl">TypeMotion</span>
+              <span className="font-display text-base font-bold tracking-tight">
+                ADT Motion
+              </span>
             </Link>
-            <span className="hidden border border-[#D4CFC4] bg-[#FAF9F6] px-2 py-0.5 text-[10px] tracking-widest text-[#5C5A54] uppercase sm:inline-block">
+            <span className="hidden rounded-xl bg-[#C2410C]/12 px-2.5 py-0.5 font-mono text-[10px] font-medium text-[#C2410C] uppercase sm:inline-block dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
               Editor
             </span>
           </div>
@@ -171,7 +175,7 @@ function EditorWorkspace() {
                 );
                 if (found) setConfig(found.config);
               }}
-              className="hidden border border-[#D4CFC4] bg-[#FAF9F6] px-2.5 py-1.5 text-[11px] text-[#141413] sm:block"
+              className="hidden rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-1.5 text-xs text-[var(--text-main)] sm:block"
             >
               <option value="" disabled>
                 Load preset...
@@ -183,11 +187,13 @@ function EditorWorkspace() {
               ))}
             </select>
 
+            <ThemeToggle />
+
             <button
               type="button"
               onClick={() => handleExport("webm")}
               disabled={exportState.format !== null}
-              className="inline-flex items-center gap-1.5 border border-[#141413] bg-[#FAF9F6] px-3 py-1.5 text-[11px] font-medium tracking-wider uppercase transition-colors hover:bg-[#141413] hover:text-[#F5F3EE] disabled:opacity-50"
+              className="btn-tactile inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-black/5 px-3.5 py-2 font-display text-xs font-semibold text-[var(--text-main)] hover:bg-black/10 disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
             >
               <Download className="h-3.5 w-3.5" />
               {exportState.format === "webm"
@@ -199,7 +205,7 @@ function EditorWorkspace() {
               type="button"
               onClick={() => handleExport("gif")}
               disabled={exportState.format !== null}
-              className="inline-flex items-center gap-1.5 border border-[#141413] bg-[#141413] px-3 py-1.5 text-[11px] font-medium tracking-wider text-[#F5F3EE] uppercase transition-colors hover:border-[#2563EB] hover:bg-[#2563EB] disabled:opacity-50"
+              className="btn-tactile inline-flex items-center gap-1.5 rounded-full bg-[#C2410C] px-4 py-2 font-display text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:opacity-50 dark:bg-[#FF6D29] dark:text-[#161316]"
             >
               <Download className="h-3.5 w-3.5" />
               {exportState.format === "gif"
@@ -213,7 +219,7 @@ function EditorWorkspace() {
       {exportState.error && (
         <div
           role="alert"
-          className="border-b border-red-300 bg-red-50 px-6 py-2 text-xs text-red-800"
+          className="border-b border-red-500/30 bg-red-500/10 px-6 py-2 text-xs text-red-500"
         >
           Export error: {exportState.error}
         </div>
@@ -222,23 +228,25 @@ function EditorWorkspace() {
       {/* Main Split Workspace */}
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-12">
         {/* 01 PREVIEW */}
-        <section className="flex flex-col border-b border-[#D4CFC4] p-4 sm:p-6 lg:col-span-7 xl:col-span-8 lg:border-r lg:border-b-0">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[11px] tracking-widest text-[#5C5A54] uppercase">
+        <section className="flex flex-col border-b border-[var(--border-subtle)] p-4 sm:p-6 lg:col-span-7 xl:col-span-8 lg:border-r lg:border-b-0">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[#2563EB]">01</span>
+              <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                01
+              </span>
               <span>Preview</span>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-1">
               {(Object.keys(ASPECT_DIMENSIONS) as AspectRatio[]).map((ratio) => (
                 <button
                   key={ratio}
                   type="button"
                   onClick={() => updateConfig("aspectRatio", ratio)}
-                  className={`border px-2 py-1 text-[10px] transition-colors ${
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
                     config.aspectRatio === ratio
-                      ? "border-[#141413] bg-[#141413] text-[#F5F3EE]"
-                      : "border-[#D4CFC4] bg-[#FAF9F6] text-[#5C5A54] hover:border-[#141413]"
+                      ? "bg-[#C2410C] text-white dark:bg-[#FF6D29] dark:text-[#161316]"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                   }`}
                 >
                   {ratio}
@@ -247,25 +255,25 @@ function EditorWorkspace() {
             </div>
           </div>
 
-          <div className="relative flex flex-1 min-h-[380px] items-center justify-center border border-[#D4CFC4] bg-[#ECE9E2] p-4 sm:p-8">
+          <div className="relative flex min-h-[380px] flex-1 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 sm:p-8">
             <div className="flex h-full max-h-[560px] w-full items-center justify-center">
               <MotionCanvas
                 config={config}
                 isPlaying={isPlaying}
                 externalCanvasRef={canvasRef}
                 onProgress={handleProgress}
-                className="border border-[#D4CFC4] shadow-sm"
+                className="rounded-xl border border-[var(--border-subtle)] shadow-lg"
               />
             </div>
           </div>
 
           {/* Playback & Loop Progress Bar */}
-          <div className="mt-3 flex items-center gap-3 border border-[#D4CFC4] bg-[#FAF9F6] px-3 py-2">
+          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3.5 py-2.5">
             <button
               type="button"
               onClick={() => setIsPlaying((p) => !p)}
               aria-label={isPlaying ? "Pause animation" : "Play animation"}
-              className="inline-flex h-8 w-8 items-center justify-center border border-[#141413] bg-[#141413] text-[#F5F3EE] transition-colors hover:bg-[#2563EB] hover:border-[#2563EB]"
+              className="btn-tactile inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#C2410C] text-white hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
             >
               {isPlaying ? (
                 <Pause className="h-3.5 w-3.5" />
@@ -275,10 +283,10 @@ function EditorWorkspace() {
             </button>
 
             <div className="flex-1">
-              <div className="h-1.5 w-full overflow-hidden bg-[#D4CFC4]">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
                 <div
                   ref={progressBarRef}
-                  className="h-full bg-[#2563EB] transition-none"
+                  className="h-full rounded-full bg-[#C2410C] transition-none dark:bg-[#FF6D29]"
                   style={{ width: "0%" }}
                 />
               </div>
@@ -288,7 +296,7 @@ function EditorWorkspace() {
               type="button"
               onClick={() => setConfig(DEFAULT_CONFIG)}
               title="Reset to default"
-              className="inline-flex items-center gap-1 border border-[#D4CFC4] bg-white px-2.5 py-1.5 text-[10px] tracking-wider text-[#5C5A54] uppercase hover:border-[#141413] hover:text-[#141413]"
+              className="btn-tactile inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 font-mono text-[10px] tracking-wider text-[var(--text-muted)] uppercase hover:text-[var(--text-main)]"
             >
               <RotateCcw className="h-3 w-3" />
               Reset
@@ -297,23 +305,25 @@ function EditorWorkspace() {
         </section>
 
         {/* 02 SOURCE & 03 CONTROLS */}
-        <aside className="flex flex-col divide-y divide-[#D4CFC4] bg-[#FAF9F6] lg:col-span-5 xl:col-span-4 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto">
+        <aside className="flex flex-col divide-y divide-[var(--border-subtle)] bg-[var(--bg-surface)] lg:col-span-5 xl:col-span-4 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           {/* 02 SOURCE */}
-          <div className="p-5 space-y-4">
-            <div className="flex items-center justify-between text-[11px] tracking-widest text-[#5C5A54] uppercase">
+          <div className="space-y-4 p-5">
+            <div className="flex items-center justify-between font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-[#2563EB]">02</span>
+                <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                  02
+                </span>
                 <span>Source</span>
               </div>
 
-              <div className="flex border border-[#D4CFC4] bg-[#F5F3EE]">
+              <div className="flex rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-0.5">
                 <button
                   type="button"
                   onClick={() => updateConfig("mode", "text")}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase ${
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-medium uppercase transition-colors ${
                     config.mode === "text"
-                      ? "bg-[#141413] text-[#F5F3EE]"
-                      : "text-[#5C5A54]"
+                      ? "bg-[#C2410C] text-white dark:bg-[#FF6D29] dark:text-[#161316]"
+                      : "text-[var(--text-muted)]"
                   }`}
                 >
                   <Type className="h-3 w-3" />
@@ -322,10 +332,10 @@ function EditorWorkspace() {
                 <button
                   type="button"
                   onClick={() => updateConfig("mode", "svg")}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase ${
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-medium uppercase transition-colors ${
                     config.mode === "svg"
-                      ? "bg-[#141413] text-[#F5F3EE]"
-                      : "text-[#5C5A54]"
+                      ? "bg-[#C2410C] text-white dark:bg-[#FF6D29] dark:text-[#161316]"
+                      : "text-[var(--text-muted)]"
                   }`}
                 >
                   <FileCode2 className="h-3 w-3" />
@@ -339,7 +349,7 @@ function EditorWorkspace() {
                 <div>
                   <label
                     htmlFor="editor-text-input"
-                    className="mb-1 block text-[10px] tracking-wider text-[#5C5A54] uppercase"
+                    className="mb-1.5 block font-mono text-[10px] tracking-wider text-[var(--text-muted)] uppercase"
                   >
                     Typography Text
                   </label>
@@ -349,14 +359,14 @@ function EditorWorkspace() {
                     value={config.text}
                     onChange={(e) => updateConfig("text", e.target.value)}
                     placeholder="Type your headline..."
-                    className="w-full border border-[#D4CFC4] bg-white px-3 py-2 text-xs text-[#141413] focus:border-[#2563EB] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="editor-font-select"
-                    className="mb-1 block text-[10px] tracking-wider text-[#5C5A54] uppercase"
+                    className="mb-1.5 block font-mono text-[10px] tracking-wider text-[var(--text-muted)] uppercase"
                   >
                     Font Family
                   </label>
@@ -366,7 +376,7 @@ function EditorWorkspace() {
                     onChange={(e) =>
                       updateConfig("font", e.target.value as FontOption)
                     }
-                    className="w-full border border-[#D4CFC4] bg-white px-3 py-2 text-xs text-[#141413] focus:border-[#2563EB] focus:outline-none"
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
                   >
                     {FONTS.map((f) => (
                       <option key={f} value={f}>
@@ -378,12 +388,12 @@ function EditorWorkspace() {
               </div>
             ) : (
               <div className="space-y-3">
-                <label className="flex cursor-pointer flex-col items-center justify-center border border-dashed border-[#141413]/40 bg-white px-4 py-5 text-center transition-colors hover:border-[#2563EB]">
-                  <Upload className="mb-1.5 h-4 w-4 text-[#2563EB]" />
-                  <span className="text-xs font-medium text-[#141413]">
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-5 text-center transition-colors hover:border-[#C2410C] dark:hover:border-[#FF6D29]">
+                  <Upload className="mb-1.5 h-4 w-4 text-[#C2410C] dark:text-[#FF6D29]" />
+                  <span className="text-xs font-semibold text-[var(--text-main)]">
                     Upload .SVG file
                   </span>
-                  <span className="mt-0.5 text-[10px] text-[#5C5A54]">
+                  <span className="mt-0.5 text-[10px] text-[var(--text-muted)]">
                     Outlined vector marks work best
                   </span>
                   <input
@@ -400,7 +410,7 @@ function EditorWorkspace() {
                       key={sample.id}
                       type="button"
                       onClick={() => updateConfig("svgMarkup", sample.markup)}
-                      className="border border-[#D4CFC4] bg-white px-2.5 py-1 text-[10px] uppercase hover:border-[#141413]"
+                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 font-mono text-[10px] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]"
                     >
                       Sample: {sample.label}
                     </button>
@@ -411,9 +421,11 @@ function EditorWorkspace() {
           </div>
 
           {/* 02B TEMPLATE */}
-          <div className="p-5 space-y-3">
-            <div className="flex items-center gap-2 text-[11px] tracking-widest text-[#5C5A54] uppercase">
-              <span className="font-semibold text-[#2563EB]">02B</span>
+          <div className="space-y-3 p-5">
+            <div className="flex items-center gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
+              <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                02B
+              </span>
               <span>Motion Template</span>
             </div>
 
@@ -425,22 +437,22 @@ function EditorWorkspace() {
                     key={tpl.id}
                     type="button"
                     onClick={() => updateConfig("template", tpl.id)}
-                    className={`border p-2.5 text-left transition-colors ${
+                    className={`rounded-xl border p-3 text-left transition-colors ${
                       active
-                        ? "border-[#2563EB] bg-[#2563EB]/8"
-                        : "border-[#D4CFC4] bg-white hover:border-[#141413]"
+                        ? "border-[#C2410C] bg-[#C2410C]/10 dark:border-[#FF6D29] dark:bg-[#FF6D29]/12"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] hover:border-[#C2410C]/50 dark:hover:border-[#FF6D29]/50"
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span
-                        className={
-                          active ? "font-semibold text-[#2563EB]" : "text-[#5C5A54]"
-                        }
-                      >
-                        {tpl.tag}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs font-medium text-[#141413]">
+                    <span
+                      className={`font-mono text-[10px] ${
+                        active
+                          ? "font-semibold text-[#C2410C] dark:text-[#FF6D29]"
+                          : "text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {tpl.tag}
+                    </span>
+                    <p className="mt-1 font-display text-xs font-bold text-[var(--text-main)]">
                       {tpl.name}
                     </p>
                   </button>
@@ -450,9 +462,11 @@ function EditorWorkspace() {
           </div>
 
           {/* 03 CONTROLS */}
-          <div className="p-5 space-y-4">
-            <div className="flex items-center gap-2 text-[11px] tracking-widest text-[#5C5A54] uppercase">
-              <span className="font-semibold text-[#2563EB]">03</span>
+          <div className="space-y-4 p-5">
+            <div className="flex items-center gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
+              <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                03
+              </span>
               <span>Controls</span>
             </div>
 
@@ -499,9 +513,11 @@ function EditorWorkspace() {
             )}
 
             {config.template === "circle" && (
-              <div className="border-t border-[#D4CFC4] pt-4 space-y-3">
-                <div className="flex items-center gap-2 text-[10px] tracking-widest text-[#5C5A54] uppercase">
-                  <span className="font-semibold text-[#2563EB]">03A</span>
+              <div className="space-y-3 border-t border-[var(--border-subtle)] pt-4">
+                <div className="flex items-center gap-2 font-mono text-[10px] tracking-widest text-[var(--text-muted)] uppercase">
+                  <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                    03A
+                  </span>
                   <span>Circle Detail</span>
                 </div>
                 <EditorRangeSlider
@@ -517,12 +533,12 @@ function EditorWorkspace() {
             )}
 
             {/* Color Controls */}
-            <div className="border-t border-[#D4CFC4] pt-4 space-y-3">
+            <div className="space-y-3 border-t border-[var(--border-subtle)] pt-4">
               {config.mode === "text" && (
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="text-color-input"
-                    className="text-[11px] font-medium tracking-wider text-[#5C5A54] uppercase"
+                    className="font-mono text-[11px] font-medium tracking-wider text-[var(--text-muted)] uppercase"
                   >
                     Text Color
                   </label>
@@ -532,9 +548,9 @@ function EditorWorkspace() {
                       type="color"
                       value={config.color}
                       onChange={(e) => updateConfig("color", e.target.value)}
-                      className="h-7 w-7 cursor-pointer border border-[#D4CFC4] bg-white p-0.5"
+                      className="h-7 w-7 cursor-pointer rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-0.5"
                     />
-                    <span className="w-16 border border-[#D4CFC4] bg-white px-2 py-1 text-[11px] uppercase">
+                    <span className="w-16 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1 font-mono text-[11px] uppercase">
                       {config.color}
                     </span>
                   </div>
@@ -542,7 +558,7 @@ function EditorWorkspace() {
               )}
 
               <div>
-                <span className="mb-1.5 block text-[11px] font-medium tracking-wider text-[#5C5A54] uppercase">
+                <span className="mb-1.5 block font-mono text-[11px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
                   Background
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -551,10 +567,10 @@ function EditorWorkspace() {
                       key={bg.value}
                       type="button"
                       onClick={() => updateConfig("bgColor", bg.value)}
-                      className={`border px-2.5 py-1 text-[10px] uppercase ${
+                      className={`rounded-xl border px-3 py-1 font-mono text-[10px] uppercase transition-colors ${
                         config.bgColor === bg.value
-                          ? "border-[#141413] bg-[#141413] text-[#F5F3EE]"
-                          : "border-[#D4CFC4] bg-white text-[#5C5A54] hover:border-[#141413]"
+                          ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                          : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-main)]"
                       }`}
                     >
                       {bg.label}
@@ -574,8 +590,8 @@ export default function EditorPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#F5F3EE] text-xs uppercase tracking-widest text-[#5C5A54]">
-          Loading TypeMotion Editor...
+        <div className="flex min-h-screen items-center justify-center bg-[var(--bg-page)] font-mono text-xs tracking-widest text-[var(--text-muted)] uppercase">
+          Loading ADT Motion Editor...
         </div>
       }
     >

@@ -1,42 +1,131 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --bg-cream: #F5F3EE;
-  --bg-card: #FAF9F6;
-  --ink: #141413;
-  --ink-muted: #5C5A54;
-  --border-hairline: #D4CFC4;
-  --accent-blue: #2563EB;
+  --bg-page: #F5F6F8;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #ECEEF2;
+  --text-main: #0F1117;
+  --text-muted: #475569;
+  --border-subtle: rgba(15, 17, 23, 0.1);
+  --accent: #C2410C;
+  --accent-fg: #FFFFFF;
+  --spotlight: rgba(194, 65, 12, 0.08);
+}
+
+html.dark {
+  --bg-page: #161316;
+  --bg-surface: #1E1A1D;
+  --bg-elevated: #292222;
+  --text-main: #F5F6F8;
+  --text-muted: #94A3B8;
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --accent: #FF6D29;
+  --accent-fg: #161316;
+  --spotlight: rgba(255, 109, 41, 0.09);
 }
 
 @theme inline {
-  --color-background: var(--bg-cream);
-  --color-foreground: var(--ink);
-  --font-serif: var(--font-serif);
+  --color-background: var(--bg-page);
+  --color-foreground: var(--text-main);
+  --color-obsidian: #161316;
+  --color-surface: var(--bg-surface);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+}
+
+/* Glass pill surface matching adt-design */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border-subtle);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 12px 32px rgba(15, 17, 23, 0.06);
+}
+
+html.dark .glass-surface {
+  background: rgba(18, 20, 28, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+
+/* Bento card surface */
+.bento-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-card:hover {
+  border-color: rgba(194, 65, 12, 0.45);
+  box-shadow: 0 20px 40px -15px rgba(15, 17, 23, 0.1);
+}
+
+html.dark .bento-card:hover {
+  border-color: rgba(255, 109, 41, 0.38);
+  box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.75);
+}
+
+/* Hero warm atmosphere + 64px architectural grid */
+.hero-atmosphere {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 74% 30%, rgba(194, 65, 12, 0.09), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 14% 18%, rgba(194, 65, 12, 0.06), transparent 65%);
+}
+
+html.dark .hero-atmosphere {
+  background-image:
+    radial-gradient(ellipse 60% 50% at 74% 30%, rgba(255, 109, 41, 0.18), rgba(69, 48, 39, 0.22) 45%, transparent 72%),
+    radial-gradient(ellipse 50% 45% at 14% 18%, rgba(255, 109, 41, 0.1), transparent 65%);
+}
+
+.bg-grid-pattern {
+  background-size: 64px 64px;
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+}
+
+/* Tactile button press */
+.btn-tactile {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.btn-tactile:active {
+  transform: scale(0.98) translateY(1px);
 }
 
 /* Transparency checkerboard for canvas preview */
 .checkerboard-bg {
   background-color: #ffffff;
   background-image:
-    linear-gradient(45deg, #ece9e2 25%, transparent 25%),
-    linear-gradient(-45deg, #ece9e2 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #ece9e2 75%),
-    linear-gradient(-45deg, transparent 75%, #ece9e2 75%);
+    linear-gradient(45deg, #eceef2 25%, transparent 25%),
+    linear-gradient(-45deg, #eceef2 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eceef2 75%),
+    linear-gradient(-45deg, transparent 75%, #eceef2 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
 
+html.dark .checkerboard-bg {
+  background-color: #161316;
+  background-image:
+    linear-gradient(45deg, #221d22 25%, transparent 25%),
+    linear-gradient(-45deg, #221d22 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #221d22 75%),
+    linear-gradient(-45deg, transparent 75%, #221d22 75%);
+}
+
 /* Accessible, brand-consistent native range slider */
 input[type="range"].tm-slider {
-  --slider-track-size: 4px;
-  --slider-thumb-size: 14px;
+  --slider-track-size: 5px;
+  --slider-thumb-size: 15px;
   --slider-track-radius: 999px;
   --slider-thumb-radius: 50%;
-  --slider-track-color: #d4cfc4;
-  --slider-fill-color: #2563EB;
-  --slider-thumb-color: #2563EB;
+  --slider-track-color: rgba(15, 17, 23, 0.14);
+  --slider-fill-color: var(--accent);
+  --slider-thumb-color: var(--accent);
   --slider-progress: 50%;
 
   -webkit-appearance: none;
@@ -48,6 +137,10 @@ input[type="range"].tm-slider {
   border: 0;
   background: transparent;
   cursor: pointer;
+}
+
+html.dark input[type="range"].tm-slider {
+  --slider-track-color: rgba(255, 255, 255, 0.14);
 }
 
 input[type="range"].tm-slider:focus-visible {
@@ -73,13 +166,13 @@ input[type="range"].tm-slider::-webkit-slider-thumb {
   inline-size: var(--slider-thumb-size);
   block-size: var(--slider-thumb-size);
   margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
-  border: 2px solid #ffffff;
+  border: 2px solid var(--bg-surface);
   border-radius: var(--slider-thumb-radius);
   background: var(--slider-thumb-color);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
-/* Firefox (declared separately so WebKit does not drop the rule) */
+/* Firefox */
 input[type="range"].tm-slider::-moz-range-track {
   block-size: var(--slider-track-size);
   border: 0;
@@ -96,18 +189,17 @@ input[type="range"].tm-slider::-moz-range-progress {
 input[type="range"].tm-slider::-moz-range-thumb {
   inline-size: var(--slider-thumb-size);
   block-size: var(--slider-thumb-size);
-  border: 2px solid #ffffff;
+  border: 2px solid var(--bg-surface);
   border-radius: var(--slider-thumb-radius);
   background: var(--slider-thumb-color);
 }
 
-/* Subtle logo motion with reduced-motion opt-in */
 @keyframes logo-tilt {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
-    transform: translateY(-1.5px) rotate(-2deg);
+    transform: translateY(-1.5px) rotate(-3deg);
   }
 }
 

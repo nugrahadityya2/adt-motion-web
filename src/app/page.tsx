@@ -8,129 +8,151 @@ export default function HomePage() {
   const featuredPresets = SHOWCASE_PRESETS.slice(0, 6);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F5F3EE] text-[#141413]">
+    <div className="flex min-h-screen flex-col bg-[var(--bg-page)] text-[var(--text-main)]">
       <SiteHeader />
 
       <main className="flex-1">
-        {/* Hero */}
-        <section className="mx-auto max-w-4xl px-4 pt-16 pb-14 text-center sm:px-6 sm:pt-24 sm:pb-20">
-          <p className="mb-5 text-[11px] font-medium tracking-[0.2em] text-[#5C5A54] uppercase">
-            SVG to motion, no timeline required
-          </p>
-          <h1 className="font-serif text-5xl leading-[0.98] tracking-tight sm:text-7xl">
-            Turn typography{" "}
-            <span className="italic text-[#2563EB]">into motion.</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-[#5C5A54]">
-            Upload an outlined SVG mark or type with curated fonts — pick a
-            motion template, tune speed, stagger, and intensity, and export as
-            WebM or GIF in seconds.
-          </p>
+        {/* Hero with adt-design atmosphere + 64px architectural grid */}
+        <section className="hero-atmosphere relative overflow-hidden">
+          <div className="bg-grid-pattern pointer-events-none absolute inset-0 opacity-60" />
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/editor"
-              className="border border-[#141413] bg-[#141413] px-7 py-3.5 text-xs font-medium tracking-widest text-[#F5F3EE] uppercase transition-colors hover:border-[#2563EB] hover:bg-[#2563EB]"
-            >
-              Try It Free
-            </Link>
-            <a
-              href="#showcase"
-              className="border border-[#141413] bg-[#FAF9F6] px-7 py-3.5 text-xs font-medium tracking-widest text-[#141413] uppercase transition-colors hover:bg-[#141413] hover:text-[#F5F3EE]"
-            >
-              See Examples
-            </a>
-          </div>
-          <p className="mt-4 text-[11px] tracking-wide text-[#5C5A54]">
-            free to try — no sign up required — export in seconds
-          </p>
-        </section>
+          <div className="relative mx-auto max-w-5xl px-4 pt-16 pb-14 text-center sm:px-6 sm:pt-24 sm:pb-20 lg:px-10">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#C2410C]/30 bg-[#C2410C]/10 px-4 py-1.5 font-mono text-[11px] font-medium tracking-wider text-[#C2410C] uppercase dark:border-[#FF6D29]/30 dark:bg-[#FF6D29]/10 dark:text-[#FF6D29]">
+              SVG to motion, no timeline required
+            </span>
 
-        {/* Live Editor Preview Mockup */}
-        <section className="mx-auto max-w-5xl px-4 pb-20 sm:px-6">
-          <div className="border border-[#141413] bg-[#FAF9F6]">
-            <div className="flex items-center justify-between border-b border-[#D4CFC4] px-4 py-2.5 text-[11px] text-[#5C5A54]">
-              <span>preview</span>
-              <span>typemotion / editor</span>
+            <h1 className="mt-6 pb-1 font-display text-4xl leading-[1.06] font-extrabold tracking-tighter sm:text-6xl xl:text-[62px]">
+              Turn typography{" "}
+              <span className="text-[#C2410C] dark:text-[#FF6D29]">
+                into motion.
+              </span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-[54ch] text-base leading-relaxed text-slate-600 sm:text-lg dark:text-slate-300">
+              Upload an outlined SVG mark or type with curated fonts — pick a
+              motion template, tune speed, stagger, and intensity, and export as
+              WebM or GIF in seconds.
+            </p>
+
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/editor"
+                className="btn-tactile rounded-full bg-[#C2410C] px-7 py-3.5 font-display text-sm font-bold text-white shadow-lg hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
+              >
+                Try It Free
+              </Link>
+              <a
+                href="#showcase"
+                className="btn-tactile rounded-full border border-black/10 bg-black/5 px-7 py-3.5 font-display text-sm font-semibold text-[var(--text-main)] hover:bg-black/10 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+              >
+                See Examples
+              </a>
             </div>
 
-            <div className="bg-[#2B2B29] p-4 sm:p-8">
-              <div className="overflow-hidden rounded-lg border border-[#44423D] bg-[#F5F3EE] shadow-2xl">
-                {/* Fake browser bar */}
-                <div className="flex items-center justify-between border-b border-[#D4CFC4] bg-[#ECE9E2] px-4 py-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#D4CFC4]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#D4CFC4]" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#D4CFC4]" />
-                  </div>
-                  <span className="border border-[#D4CFC4] bg-[#FAF9F6] px-3 py-0.5 text-[10px] text-[#5C5A54]">
-                    localhost / editor
+            <p className="mt-5 font-mono text-[11px] tracking-wide text-[var(--text-muted)]">
+              free to try — no sign up required — export in seconds
+            </p>
+          </div>
+        </section>
+
+        {/* Live Editor Preview Bento Card */}
+        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 lg:px-10">
+          <div className="bento-card overflow-hidden rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-5 py-3 font-mono text-[11px] text-[var(--text-muted)]">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-black/15 dark:bg-white/15" />
+                <span className="h-2.5 w-2.5 rounded-full bg-black/15 dark:bg-white/15" />
+                <span className="h-2.5 w-2.5 rounded-full bg-black/15 dark:bg-white/15" />
+                <span className="ml-2">adt-motion / editor</span>
+              </div>
+              <span className="rounded-xl bg-[#C2410C]/15 px-2.5 py-0.5 text-[10px] font-medium text-[#C2410C] dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
+                v1 / live preview
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12">
+              <div className="border-b border-[var(--border-subtle)] p-5 md:col-span-7 md:border-r md:border-b-0">
+                <div className="mb-3 flex items-center justify-between font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
+                  <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                    01 · Preview
                   </span>
-                  <span className="text-[10px] text-[#5C5A54]">v1 / mvp</span>
+                  <span>1:1 Canvas</span>
                 </div>
+                <div className="flex aspect-square max-h-[360px] w-full items-center justify-center overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[#161316]">
+                  <MotionCanvas
+                    config={{
+                      ...DEFAULT_CONFIG,
+                      bgColor: "#161316",
+                      color: "#F5F6F8",
+                    }}
+                    isPlaying={true}
+                    className="h-full w-full"
+                  />
+                </div>
+              </div>
 
-                {/* Live miniature editor */}
-                <div className="grid grid-cols-1 md:grid-cols-12">
-                  <div className="border-b border-[#D4CFC4] p-4 md:col-span-7 md:border-r md:border-b-0">
-                    <div className="mb-2 flex items-center justify-between text-[10px] tracking-widest text-[#5C5A54] uppercase">
-                      <span>01</span>
-                      <span>Preview</span>
+              <div className="flex flex-col justify-between p-5 md:col-span-5">
+                <div>
+                  <div className="mb-3 flex items-center justify-between font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
+                    <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                      03 · Controls
+                    </span>
+                    <span>Real-time</span>
+                  </div>
+                  <div className="space-y-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 font-mono text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[var(--text-muted)] uppercase">
+                        Speed
+                      </span>
+                      <span className="font-medium text-[var(--text-main)]">
+                        1.0×
+                      </span>
                     </div>
-                    <div className="flex aspect-square max-h-[340px] w-full items-center justify-center border border-[#D4CFC4] bg-white">
-                      <MotionCanvas
-                        config={DEFAULT_CONFIG}
-                        isPlaying={true}
-                        className="h-full w-full"
-                      />
+                    <div className="h-1.5 w-full rounded-full bg-black/10 dark:bg-white/10">
+                      <div className="h-1.5 w-1/3 rounded-full bg-[#C2410C] dark:bg-[#FF6D29]" />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[var(--text-muted)] uppercase">
+                        Stagger
+                      </span>
+                      <span className="font-medium text-[var(--text-main)]">
+                        40ms
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-black/10 dark:bg-white/10">
+                      <div className="h-1.5 w-1/4 rounded-full bg-[#C2410C] dark:bg-[#FF6D29]" />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[var(--text-muted)] uppercase">
+                        Intensity
+                      </span>
+                      <span className="font-medium text-[var(--text-main)]">
+                        100%
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-black/10 dark:bg-white/10">
+                      <div className="h-1.5 w-1/2 rounded-full bg-[#C2410C] dark:bg-[#FF6D29]" />
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-3">
+                      <span className="text-[var(--text-muted)] uppercase">
+                        03A Circle Detail
+                      </span>
+                      <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
+                        185px
+                      </span>
                     </div>
                   </div>
-
-                  <div className="flex flex-col justify-between p-4 md:col-span-5">
-                    <div>
-                      <div className="mb-3 flex items-center justify-between text-[10px] tracking-widest text-[#5C5A54] uppercase">
-                        <span>03</span>
-                        <span>Controls</span>
-                      </div>
-                      <div className="space-y-3 border border-[#D4CFC4] bg-[#FAF9F6] p-3.5 text-[11px]">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[#5C5A54] uppercase">Speed</span>
-                          <span className="font-medium text-[#141413]">1.0×</span>
-                        </div>
-                        <div className="h-1 w-full rounded-full bg-[#D4CFC4]">
-                          <div className="h-1 w-1/3 rounded-full bg-[#2563EB]" />
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-[#5C5A54] uppercase">Stagger</span>
-                          <span className="font-medium text-[#141413]">40ms</span>
-                        </div>
-                        <div className="h-1 w-full rounded-full bg-[#D4CFC4]">
-                          <div className="h-1 w-1/4 rounded-full bg-[#2563EB]" />
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-[#5C5A54] uppercase">Intensity</span>
-                          <span className="font-medium text-[#141413]">100%</span>
-                        </div>
-                        <div className="h-1 w-full rounded-full bg-[#D4CFC4]">
-                          <div className="h-1 w-1/2 rounded-full bg-[#2563EB]" />
-                        </div>
-
-                        <div className="flex items-center justify-between border-t border-[#D4CFC4] pt-3">
-                          <span className="text-[#5C5A54] uppercase">03A Circle Detail</span>
-                          <span className="text-[#2563EB]">185px</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Link
-                      href="/editor"
-                      className="mt-4 block border border-[#141413] bg-[#141413] py-2.5 text-center text-[11px] font-medium tracking-widest text-[#F5F3EE] uppercase transition-colors hover:border-[#2563EB] hover:bg-[#2563EB]"
-                    >
-                      Open Interactive Editor →
-                    </Link>
-                  </div>
                 </div>
+
+                <Link
+                  href="/editor"
+                  className="btn-tactile mt-5 block rounded-full bg-[#C2410C] py-3 text-center font-display text-xs font-bold tracking-wide text-white shadow-md hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
+                >
+                  Open Interactive Editor →
+                </Link>
               </div>
             </div>
           </div>
@@ -139,27 +161,27 @@ export default function HomePage() {
         {/* Showcase */}
         <section
           id="showcase"
-          className="border-t border-[#D4CFC4] bg-[#FAF9F6] py-20"
+          className="border-t border-[var(--border-subtle)] py-20"
         >
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
             <div className="mb-12 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
-                <p className="text-[11px] tracking-[0.2em] text-[#5C5A54] uppercase">
-                  made with typemotion
+                <p className="font-mono text-[11px] tracking-[0.2em] text-[#C2410C] uppercase dark:text-[#FF6D29]">
+                  made with adt motion
                 </p>
-                <h2 className="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
+                <h2 className="mt-2 font-display text-3xl leading-none font-extrabold tracking-tight sm:text-5xl">
                   Real-time presets, ready to export.
                 </h2>
               </div>
               <Link
                 href="/showcase"
-                className="inline-block self-start border border-[#141413] bg-[#F5F3EE] px-5 py-2.5 text-xs font-medium tracking-widest uppercase transition-colors hover:bg-[#141413] hover:text-[#F5F3EE]"
+                className="btn-tactile inline-block self-start rounded-full border border-black/10 bg-black/5 px-6 py-2.5 font-display text-xs font-semibold text-[var(--text-main)] hover:bg-black/10 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
               >
                 See Full Showcase
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {featuredPresets.map((preset) => (
                 <ShowcaseCard key={preset.id} preset={preset} />
               ))}
@@ -168,36 +190,48 @@ export default function HomePage() {
         </section>
 
         {/* How It Works */}
-        <section className="border-t border-[#D4CFC4] py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <p className="text-[11px] tracking-[0.2em] text-[#5C5A54] uppercase">
+        <section className="border-t border-[var(--border-subtle)] py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+            <p className="font-mono text-[11px] tracking-[0.2em] text-[#C2410C] uppercase dark:text-[#FF6D29]">
               how it works
             </p>
-            <h2 className="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-2 font-display text-3xl leading-none font-extrabold tracking-tight sm:text-5xl">
               From static to moving in three steps.
             </h2>
 
-            <div className="mt-12 grid grid-cols-1 border border-[#D4CFC4] bg-[#FAF9F6] md:grid-cols-3">
-              <div className="border-b border-[#D4CFC4] p-7 md:border-r md:border-b-0">
-                <span className="text-xs font-semibold text-[#2563EB]">01</span>
-                <h3 className="mt-3 font-serif text-2xl">Start with your text</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#5C5A54]">
+            <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
+              <div className="bento-card rounded-2xl p-7">
+                <span className="inline-block rounded-xl bg-[#C2410C]/15 px-3 py-1 font-mono text-xs font-semibold text-[#C2410C] dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
+                  01
+                </span>
+                <h3 className="mt-4 font-display text-2xl font-bold tracking-tight">
+                  Start with your text
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
                   Type any headline or upload an SVG logo mark. Pick from
-                  curated serif, grotesk, and display fonts.
+                  curated display, serif, and monospace fonts.
                 </p>
               </div>
-              <div className="border-b border-[#D4CFC4] p-7 md:border-r md:border-b-0">
-                <span className="text-xs font-semibold text-[#2563EB]">02</span>
-                <h3 className="mt-3 font-serif text-2xl">Pick a motion</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#5C5A54]">
+              <div className="bento-card rounded-2xl p-7">
+                <span className="inline-block rounded-xl bg-[#C2410C]/15 px-3 py-1 font-mono text-xs font-semibold text-[#C2410C] dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
+                  02
+                </span>
+                <h3 className="mt-4 font-display text-2xl font-bold tracking-tight">
+                  Pick a motion
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
                   Choose Circle Orbit, Kinetic Wave, Stagger Rise, Elastic Pop,
                   or Split Ribbon—then fine-tune speed and stagger.
                 </p>
               </div>
-              <div className="p-7">
-                <span className="text-xs font-semibold text-[#2563EB]">03</span>
-                <h3 className="mt-3 font-serif text-2xl">Export in seconds</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#5C5A54]">
+              <div className="bento-card rounded-2xl p-7">
+                <span className="inline-block rounded-xl bg-[#C2410C]/15 px-3 py-1 font-mono text-xs font-semibold text-[#C2410C] dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
+                  03
+                </span>
+                <h3 className="mt-4 font-display text-2xl font-bold tracking-tight">
+                  Export in seconds
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
                   Render a seamless loop directly in your browser as a WebM
                   video or animated GIF—ready for web, decks, or socials.
                 </p>
@@ -207,42 +241,48 @@ export default function HomePage() {
         </section>
 
         {/* Built For */}
-        <section className="border-t border-[#D4CFC4] bg-[#FAF9F6] py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <p className="text-[11px] tracking-[0.2em] text-[#5C5A54] uppercase">
+        <section className="border-t border-[var(--border-subtle)] py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+            <p className="font-mono text-[11px] tracking-[0.2em] text-[#C2410C] uppercase dark:text-[#FF6D29]">
               built for
             </p>
-            <h2 className="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-2 font-display text-3xl leading-none font-extrabold tracking-tight sm:text-5xl">
               Wherever your type needs to move.
             </h2>
 
             <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
-              <div className="border border-[#D4CFC4] bg-[#F5F3EE] p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center border border-[#141413] bg-white font-serif text-lg">
+              <div className="bento-card rounded-2xl bg-gradient-to-br from-[#C2410C]/[0.07] via-transparent to-transparent p-7 dark:from-[#FF6D29]/[0.07]">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] font-display text-base font-bold text-[#C2410C] dark:text-[#FF6D29]">
                   Aa
                 </div>
-                <h3 className="mt-5 font-serif text-2xl">Designers</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#5C5A54]">
+                <h3 className="mt-5 font-display text-2xl font-bold tracking-tight">
+                  Designers
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
                   Prototype kinetic hero headers, case study cards, and visual
                   identities without opening keyframe timelines.
                 </p>
               </div>
-              <div className="border border-[#D4CFC4] bg-[#F5F3EE] p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center border border-[#141413] bg-white text-sm">
+              <div className="bento-card rounded-2xl p-7">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-sm text-[#C2410C] dark:text-[#FF6D29]">
                   ▶
                 </div>
-                <h3 className="mt-5 font-serif text-2xl">Content creators</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#5C5A54]">
+                <h3 className="mt-5 font-display text-2xl font-bold tracking-tight">
+                  Content creators
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
                   Generate crisp 9:16, 4:5, or 1:1 typographic stickers and
                   title loops for Reels, Shorts, and threads.
                 </p>
               </div>
-              <div className="border border-[#D4CFC4] bg-[#F5F3EE] p-6">
-                <div className="inline-flex h-10 w-10 items-center justify-center border border-[#141413] bg-white text-sm">
+              <div className="bento-card rounded-2xl p-7">
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-sm text-[#C2410C] dark:text-[#FF6D29]">
                   ◆
                 </div>
-                <h3 className="mt-5 font-serif text-2xl">Brand &amp; logo</h3>
-                <p className="mt-2 text-xs leading-relaxed text-[#5C5A54]">
+                <h3 className="mt-5 font-display text-2xl font-bold tracking-tight">
+                  Brand &amp; logo
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
                   Bring static SVG marks to life with deterministic loop motion
                   and transparent backgrounds.
                 </p>
@@ -252,32 +292,42 @@ export default function HomePage() {
         </section>
 
         {/* Bottom CTA */}
-        <section className="border-t border-[#D4CFC4] py-20 text-center">
+        <section className="border-t border-[var(--border-subtle)] py-20 text-center">
           <div className="mx-auto max-w-2xl px-4 sm:px-6">
-            <p className="text-[11px] tracking-[0.2em] text-[#5C5A54] uppercase">
+            <p className="font-mono text-[11px] tracking-[0.2em] text-[#C2410C] uppercase dark:text-[#FF6D29]">
               get started
             </p>
-            <h2 className="mt-3 font-serif text-5xl tracking-tight sm:text-6xl">
+            <h2 className="mt-3 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
               Your type, in motion.
             </h2>
-            <p className="mt-4 text-xs text-[#5C5A54]">
+            <p className="mt-4 text-sm text-[var(--text-muted)]">
               Jump straight into the editor—everything runs locally in your
               browser.
             </p>
             <Link
               href="/editor"
-              className="mt-8 inline-block border border-[#141413] bg-[#141413] px-8 py-4 text-xs font-medium tracking-widest text-[#F5F3EE] uppercase transition-colors hover:border-[#2563EB] hover:bg-[#2563EB]"
+              className="btn-tactile mt-8 inline-block rounded-full bg-[#C2410C] px-8 py-4 font-display text-sm font-bold text-white shadow-lg hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
             >
-              Launch Editor
+              Launch ADT Motion Editor
             </Link>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-[#D4CFC4] bg-[#FAF9F6] py-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-xs text-[#5C5A54] sm:flex-row sm:px-6">
-          <span>TypeMotion Studio © 2026</span>
-          <span>Built with Next.js + HTML5 Canvas + gifenc</span>
+      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] py-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 font-mono text-xs text-[var(--text-muted)] sm:flex-row sm:px-6 lg:px-10">
+          <span>ADT Motion © 2026</span>
+          <span>
+            Part of{" "}
+            <a
+              href="https://adt-design.vercel.app/index.html"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-[#C2410C] hover:underline dark:text-[#FF6D29]"
+            >
+              ADT Design
+            </a>
+          </span>
         </div>
       </footer>
     </div>

@@ -7,6 +7,8 @@ export type MotionTemplate =
   | "marquee-split";
 
 export type FontOption =
+  | "Outfit"
+  | "JetBrains Mono"
   | "Space Grotesk"
   | "Instrument Serif"
   | "Syne"
@@ -45,6 +47,8 @@ export const ASPECT_DIMENSIONS: Record<
 };
 
 export const FONT_MAP: Record<FontOption, string> = {
+  Outfit: "var(--font-display), 'Outfit', sans-serif",
+  "JetBrains Mono": "var(--font-mono), 'JetBrains Mono', monospace",
   "Space Grotesk": "var(--font-grotesk), 'Space Grotesk', sans-serif",
   "Instrument Serif": "var(--font-serif), 'Instrument Serif', serif",
   Syne: "var(--font-syne), 'Syne', sans-serif",
@@ -114,17 +118,19 @@ function resolveCanvasFont(font: FontOption, sizePx: number): string {
   let family: string = font;
   if (typeof document !== "undefined") {
     const varName =
-      font === "Space Grotesk"
-        ? "--font-grotesk"
-        : font === "Instrument Serif"
-          ? "--font-serif"
-          : font === "Syne"
-            ? "--font-syne"
-            : font === "IBM Plex Mono"
-              ? "--font-mono"
-              : font === "Bebas Neue"
-                ? "--font-bebas"
-                : "--font-playfair";
+      font === "Outfit"
+        ? "--font-display"
+        : font === "JetBrains Mono" || font === "IBM Plex Mono"
+          ? "--font-mono"
+          : font === "Space Grotesk"
+            ? "--font-grotesk"
+            : font === "Instrument Serif"
+              ? "--font-serif"
+              : font === "Syne"
+                ? "--font-syne"
+                : font === "Bebas Neue"
+                  ? "--font-bebas"
+                  : "--font-playfair";
     const computed = getComputedStyle(document.documentElement)
       .getPropertyValue(varName)
       .trim();
@@ -133,7 +139,9 @@ function resolveCanvasFont(font: FontOption, sizePx: number): string {
     }
   }
   const weight =
-    font === "Syne" || font === "Playfair Display" ? "700" : "500";
+    font === "Outfit" || font === "Syne" || font === "Playfair Display"
+      ? "700"
+      : "500";
   return `${weight} ${sizePx}px ${family}, sans-serif`;
 }
 
@@ -163,7 +171,7 @@ export function renderMotionFrame(
     return;
   }
 
-  const rawText = config.text.trim() || "TYPEMOTION";
+  const rawText = config.text.trim() || "ADT MOTION";
   ctx.fillStyle = config.color;
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";

@@ -90,7 +90,7 @@ export async function exportToWebM(
   });
 
   const blob = new Blob(chunks, { type: "video/webm" });
-  triggerDownload(blob, `typemotion-${config.template}.webm`);
+  triggerDownload(blob, `adt-motion-${config.template}.webm`);
 }
 
 export async function exportToGif(
@@ -164,5 +164,5 @@ export async function exportToGif(
     bytes.byteOffset + bytes.byteLength
   ) as ArrayBuffer;
   const blob = new Blob([buffer], { type: "image/gif" });
-  triggerDownload(blob, `typemotion-${config.template}.gif`);
+  triggerDownload(blob, `adt-motion-${config.template}.gif`);
 }
