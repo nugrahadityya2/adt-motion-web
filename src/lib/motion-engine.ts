@@ -9,7 +9,7 @@ import type { ParsedSvg } from "./svg-parser";
 export type { MotionTemplate, TemplateCategory };
 export { TEMPLATE_META, TEMPLATE_CATEGORIES };
 
-export type FontOption =
+export type BuiltInFontOption =
   | "Outfit"
   | "Plus Jakarta Sans"
   | "JetBrains Mono"
@@ -24,6 +24,8 @@ export type FontOption =
   | "Oswald"
   | "Bricolage Grotesque"
   | "Cormorant Garamond";
+
+export type FontOption = BuiltInFontOption | (string & {});
 
 export type FontWeightOption = "400" | "500" | "700" | "800";
 export type FontStyleOption = "normal" | "italic";
@@ -90,7 +92,7 @@ export const ASPECT_DIMENSIONS: Record<
   "4:5": { width: 640, height: 800, label: "4:5 Portrait" },
 };
 
-export const FONT_MAP: Record<FontOption, string> = {
+export const FONT_MAP: Record<BuiltInFontOption, string> = {
   Outfit: "var(--font-display), 'Outfit', sans-serif",
   "Plus Jakarta Sans": "var(--font-sans), 'Plus Jakarta Sans', sans-serif",
   "JetBrains Mono": "var(--font-mono), 'JetBrains Mono', monospace",
@@ -154,9 +156,9 @@ function resolveCanvasFont(
   fontWeight: FontWeightOption = "500",
   fontStyle: FontStyleOption = "normal"
 ): string {
-  let family: string = font;
+  let family: string = `"${font}"`;
   if (typeof document !== "undefined") {
-    const varMap: Record<FontOption, string> = {
+    const varMap: Record<BuiltInFontOption, string> = {
       Outfit: "--font-display",
       "Plus Jakarta Sans": "--font-sans",
       "JetBrains Mono": "--font-mono",
@@ -172,10 +174,13 @@ function resolveCanvasFont(
       "Bricolage Grotesque": "--font-bricolage",
       "Cormorant Garamond": "--font-cormorant",
     };
-    const computed = getComputedStyle(document.documentElement)
-      .getPropertyValue(varMap[font])
-      .trim();
-    if (computed) family = computed;
+    const varName = varMap[font as BuiltInFontOption];
+    if (varName) {
+      const computed = getComputedStyle(document.documentElement)
+        .getPropertyValue(varName)
+        .trim();
+      if (computed) family = computed;
+    }
   }
   return `${fontStyle} ${fontWeight} ${sizePx}px ${family}, sans-serif`;
 }

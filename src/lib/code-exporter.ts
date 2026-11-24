@@ -1,4 +1,5 @@
 import {
+  FONT_MAP,
   getEffectiveLoopSec,
   MotionConfig,
 } from "./motion-engine";
@@ -131,8 +132,13 @@ export function generateHtmlCssEmbed(config: MotionConfig): string {
     })
     .join("\n");
 
+  const isBuiltIn = config.font in FONT_MAP;
+  const fontHeader = isBuiltIn
+    ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${fontQuery}:ital,wght@0,400;0,500;0,700;0,800;1,400;1,700&display=swap" />`
+    : `<!-- Custom font "${config.font}": load your .woff2/.ttf via @font-face in your CSS -->`;
+
   return `<!-- ADT Motion HTML + CSS Embed -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${fontQuery}:ital,wght@0,400;0,500;0,700;0,800;1,400;1,700&display=swap" />
+${fontHeader}
 <style>
   .adt-motion {
     display: inline-flex;

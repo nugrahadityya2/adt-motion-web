@@ -107,6 +107,7 @@ function EditorWorkspace() {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
+  const [customFonts, setCustomFonts] = useState<string[]>([]);
   const activeLayer =
     layers.find((l) => l.id === activeLayerId) ?? layers[0];
   const config = activeLayer.config;
@@ -286,6 +287,38 @@ function EditorWorkspace() {
       URL.revokeObjectURL(bgMedia.url);
     }
     setBgMedia(null);
+  };
+
+  const handleFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const cleanName =
+        file.name
+          .replace(/\.(ttf|otf|woff2?|TTF|OTF|WOFF2?)$/, "")
+          .replace(/[-_]+/g, " ")
+          .trim() || "Custom Font";
+      const buffer = await file.arrayBuffer();
+      const face = new FontFace(cleanName, buffer);
+      await face.load();
+      document.fonts.add(face);
+      setCustomFonts((prev) =>
+        prev.includes(cleanName) ? prev : [cleanName, ...prev]
+      );
+      updateConfig("font", cleanName);
+      setExportState((s) => ({
+        ...s,
+        error: null,
+        notice: `Font "${cleanName}" loaded!`,
+      }));
+    } catch {
+      setExportState((s) => ({
+        ...s,
+        error: "Could not load font file. Please use a valid .ttf, .otf, .woff, or .woff2 file.",
+      }));
+    } finally {
+      e.target.value = "";
+    }
   };
 
   const handleSvgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -538,20 +571,46 @@ function EditorWorkspace() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <select
-                      aria-label="Font family"
-                      value={config.font}
-                      onChange={(e) =>
-                        updateConfig("font", e.target.value as FontOption)
-                      }
-                      className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
-                    >
-                      {FONTS.map((f) => (
-                        <option key={f} value={f}>
-                          {f}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        aria-label="Font family"
+                        value={config.font}
+                        onChange={(e) =>
+                          updateConfig("font", e.target.value as FontOption)
+                        }
+                        className="min-w-0 flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs text-[var(--text-main)] focus:border-[#C2410C] focus:outline-none dark:focus:border-[#FF6D29]"
+                      >
+                        {customFonts.length > 0 && (
+                          <optgroup label="Uploaded Fonts">
+                            {customFonts.map((cf) => (
+                              <option key={cf} value={cf}>
+                                {cf}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        <optgroup label="Built-in Fonts">
+                          {FONTS.map((f) => (
+                            <option key={f} value={f}>
+                              {f}
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                      <label
+                        title="Upload custom font (.ttf, .otf, .woff, .woff2)"
+                        className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-2 font-mono text-[10px] text-[var(--text-main)] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]"
+                      >
+                        <Upload className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
+                        <span>Font</span>
+                        <input
+                          type="file"
+                          accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
+                          onChange={handleFontUpload}
+                          className="sr-only"
+                        />
+                      </label>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <select
                         aria-label="Font weight"
