@@ -15,6 +15,23 @@ const RESOLUTION_SCALE: Record<ExportResolution, number> = {
   "4k": 2.4,
 };
 
+function buildExportFilename(config: MotionConfig, ext: string): string {
+  const raw =
+    config.mode === "svg"
+      ? config.svgFileName.replace(/\.svg$/i, "")
+      : config.text;
+
+  const slug = raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+
+  const base = slug || "adt-motion";
+  return `${base}.${ext}`;
+}
+
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -108,7 +125,7 @@ export async function exportMotionVideo(
   const blob = new Blob(chunks, {
     type: actualFormat === "mp4" ? "video/mp4" : "video/webm",
   });
-  triggerDownload(blob, `adt-motion-${config.template}.${actualFormat}`);
+  triggerDownload(blob, buildExportFilename(config, actualFormat));
   return { actualFormat };
 }
 
@@ -185,5 +202,5 @@ export async function exportToGif(
     bytes.byteOffset + bytes.byteLength
   ) as ArrayBuffer;
   const blob = new Blob([buffer], { type: "image/gif" });
-  triggerDownload(blob, `adt-motion-${config.template}.gif`);
+  triggerDownload(blob, buildExportFilename(config, "gif"));
 }
