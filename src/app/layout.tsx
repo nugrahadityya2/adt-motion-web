@@ -103,6 +103,11 @@ export const metadata: Metadata = {
   title: "ADT Motion: Kinetic Typography & Multi-Layer Motion Studio",
   description:
     "Compose multi-layer typography and SVG animations, drag elements on canvas, add photo or video backgrounds, and export WebM, MP4, GIF, or HTML/CSS.",
+  icons: {
+    icon: "/adt-logo.png",
+    shortcut: "/adt-logo.png",
+    apple: "/adt-logo.png",
+  },
 };
 
 export default function RootLayout({
