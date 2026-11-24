@@ -334,15 +334,19 @@ function EditorWorkspace() {
           </div>
 
           <div className="flex items-center gap-2">
-            <a
-              href={getUpgradeUrl()}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => {
+                const url = getUpgradeUrl();
+                if (url) {
+                  window.open(url, "_blank", "noopener,noreferrer");
+                }
+              }}
               className="btn-tactile inline-flex items-center gap-1.5 rounded-full bg-[#C2410C] px-3.5 py-1.5 font-display text-xs font-bold text-white shadow-sm hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
             >
               <span>✦</span>
               <span>Go Premium</span>
-            </a>
+            </button>
 
             <button
               type="button"
@@ -1277,14 +1281,18 @@ function EditorWorkspace() {
               >
                 Close
               </button>
-              <a
-                href={getUpgradeUrl()}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => {
+                  const url = getUpgradeUrl();
+                  if (url) {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }
+                }}
                 className="btn-tactile rounded-full bg-[#C2410C] px-5 py-2 font-display text-xs font-bold text-white hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
               >
                 Upgrade to Pro →
-              </a>
+              </button>
             </div>
           </div>
         </div>

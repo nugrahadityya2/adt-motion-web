@@ -319,14 +319,9 @@ export default function HomePage() {
           <span>ADT Motion © 2026</span>
           <span>
             Part of{" "}
-            <a
-              href="https://adt-design.vercel.app/index.html"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-[#C2410C] hover:underline dark:text-[#FF6D29]"
-            >
+            <span className="font-medium text-[#C2410C] dark:text-[#FF6D29]">
               ADT Design
-            </a>
+            </span>
           </span>
         </div>
       </footer>

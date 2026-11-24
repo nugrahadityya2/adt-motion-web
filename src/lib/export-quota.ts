@@ -19,10 +19,7 @@ export function getDailyExportLimit(): number {
 }
 
 export function getUpgradeUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_UPGRADE_URL ||
-    "https://adt-design.vercel.app/index.html#contact"
-  );
+  return process.env.NEXT_PUBLIC_UPGRADE_URL || "";
 }
 
 export function getRemainingExports(): number {
