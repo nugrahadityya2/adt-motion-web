@@ -1,11 +1,13 @@
 import {
   MotionTemplate,
+  TEMPLATE_CATEGORIES,
   TEMPLATE_META,
+  type TemplateCategory,
 } from "./motion-templates";
 import type { ParsedSvg } from "./svg-parser";
 
-export type { MotionTemplate };
-export { TEMPLATE_META };
+export type { MotionTemplate, TemplateCategory };
+export { TEMPLATE_META, TEMPLATE_CATEGORIES };
 
 export type FontOption =
   | "Outfit"

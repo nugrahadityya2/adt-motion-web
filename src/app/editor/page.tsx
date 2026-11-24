@@ -36,7 +36,9 @@ import {
   MotionConfig,
   MotionLayer,
   MotionTemplate,
+  TEMPLATE_CATEGORIES,
   TEMPLATE_META,
+  type TemplateCategory,
   WaveDensityOption,
 } from "@/lib/motion-engine";
 import {
@@ -114,6 +116,12 @@ function EditorWorkspace() {
   const [replayNonce, setReplayNonce] = useState(0);
   const [unitsCount, setUnitsCount] = useState(24);
   const [showSourcePanel, setShowSourcePanel] = useState(true);
+  const [templateCategory, setTemplateCategory] = useState<"All" | TemplateCategory>("All");
+
+  const filteredTemplates =
+    templateCategory === "All"
+      ? TEMPLATE_META
+      : TEMPLATE_META.filter((t) => t.category === templateCategory);
 
   const [exportFormat, setExportFormat] = useState<"webm" | "mp4" | "gif">("webm");
   const [exportRes, setExportRes] = useState<ExportResolution>("1080p");
@@ -328,8 +336,8 @@ function EditorWorkspace() {
                 ADT Motion
               </span>
             </Link>
-            <span className="hidden rounded-xl bg-[#C2410C]/12 px-2 py-0.5 font-mono text-[10px] font-medium text-[#C2410C] uppercase sm:inline-block dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
-              v2 · 37 Templates
+            <span className="hidden rounded-full bg-[#C2410C]/12 px-2.5 py-0.5 font-mono text-[10px] font-medium text-[#C2410C] uppercase sm:inline-block dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
+              Studio
             </span>
           </div>
 
@@ -378,17 +386,37 @@ function EditorWorkspace() {
 
       {/* 3-Column Workspace matching TypeMotion video */}
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-12">
-        {/* 01 TEMPLATE (Left Sidebar - 37 Motion Templates) */}
+        {/* Left Sidebar: Categorized Motion Library */}
         <aside className="flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] lg:col-span-3 lg:max-h-[calc(100vh-3.5rem)] lg:border-r lg:border-b-0">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
-            <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
-              01 · Template
-            </span>
-            <span>{TEMPLATE_META.length} motions</span>
+          <div className="border-b border-[var(--border-subtle)] px-4 py-3">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xs font-bold tracking-tight text-[var(--text-main)]">
+                Motion Library
+              </span>
+              <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                {filteredTemplates.length} styles
+              </span>
+            </div>
+            <div className="mt-2.5 flex flex-wrap gap-1">
+              {TEMPLATE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setTemplateCategory(cat)}
+                  className={`rounded-full px-2.5 py-1 font-mono text-[10px] transition-colors ${
+                    templateCategory === cat
+                      ? "bg-[#C2410C] text-white dark:bg-[#FF6D29] dark:text-[#161316]"
+                      : "bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="max-h-72 overflow-y-auto divide-y divide-[var(--border-subtle)] lg:max-h-none lg:flex-1">
-            {TEMPLATE_META.map((tpl) => {
+            {filteredTemplates.map((tpl) => {
               const active = config.template === tpl.id;
               return (
                 <button
@@ -416,13 +444,13 @@ function EditorWorkspace() {
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 font-mono text-[10px] font-semibold ${
+                    className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] uppercase ${
                       active
-                        ? "text-white/90 dark:text-[#161316]/80"
-                        : "text-[var(--text-muted)]"
+                        ? "bg-white/20 text-white dark:bg-black/15 dark:text-[#161316]"
+                        : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
                     }`}
                   >
-                    {tpl.tag}
+                    {tpl.category}
                   </span>
                 </button>
               );
@@ -623,13 +651,15 @@ function EditorWorkspace() {
             </button>
           </div>
 
-          {/* 02 PREVIEW Header */}
-          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
+          {/* Canvas Stage Header */}
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
-                02
+              <span className="font-display text-xs font-bold text-[var(--text-main)]">
+                Canvas Stage
               </span>
-              <span>Preview</span>
+              <span className="hidden font-mono text-[10px] text-[var(--text-muted)] sm:inline">
+                (drag to move)
+              </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
@@ -745,15 +775,17 @@ function EditorWorkspace() {
           </div>
         </section>
 
-        {/* 03 CONTROLS + 03A DETAIL + 04 EXPORT (Right Sidebar) */}
+        {/* Right Sidebar: Inspector + Motion Tuning + Render & Export */}
         <aside className="flex flex-col divide-y divide-[var(--border-subtle)] bg-[var(--bg-surface)] lg:col-span-3 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto">
-          {/* 03 CONTROLS */}
+          {/* Inspector */}
           <div className="space-y-3.5 p-4">
-            <div className="flex items-center gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
-              <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
-                03
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xs font-bold text-[var(--text-main)]">
+                Inspector
               </span>
-              <span>Controls</span>
+              <span className="font-mono text-[10px] text-[#C2410C] dark:text-[#FF6D29]">
+                {activeLayer.name}
+              </span>
             </div>
 
             <EditorRangeSlider
@@ -917,14 +949,16 @@ function EditorWorkspace() {
             </div>
           </div>
 
-          {/* 03A CONTEXTUAL DETAIL */}
+          {/* Contextual Motion Tuning */}
           {activeTemplateMeta.detailType !== "none" && (
             <div className="space-y-3 p-4">
-              <div className="flex items-center gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
-                <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
-                  03A
+              <div className="flex items-center justify-between">
+                <span className="font-display text-xs font-bold text-[var(--text-main)]">
+                  Motion Tuning
                 </span>
-                <span>{activeTemplateMeta.detailType} Detail</span>
+                <span className="font-mono text-[10px] text-[var(--text-muted)] uppercase">
+                  {activeTemplateMeta.detailType}
+                </span>
               </div>
 
               {activeTemplateMeta.detailType === "pattern" && (
@@ -1165,13 +1199,15 @@ function EditorWorkspace() {
             </div>
           )}
 
-          {/* 04 EXPORT */}
+          {/* Render & Export */}
           <div className="space-y-3 p-4">
-            <div className="flex items-center gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
-              <span className="font-semibold text-[#C2410C] dark:text-[#FF6D29]">
-                04
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xs font-bold text-[var(--text-main)]">
+                Render &amp; Export
               </span>
-              <span>Export</span>
+              <span className="font-mono text-[10px] text-[var(--text-muted)] uppercase">
+                Local
+              </span>
             </div>
 
             <div className="grid grid-cols-3 gap-1">
