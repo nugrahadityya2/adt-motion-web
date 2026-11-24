@@ -220,26 +220,15 @@ function EditorWorkspace() {
           </div>
 
           <div className="flex items-center gap-2">
-            <select
-              aria-label="Load preset"
-              value=""
-              onChange={(e) => {
-                const found = SHOWCASE_PRESETS.find(
-                  (p) => p.id === e.target.value
-                );
-                if (found) setConfig(found.config);
-              }}
-              className="hidden rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs text-[var(--text-main)] sm:block"
+            <a
+              href={getUpgradeUrl()}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-tactile inline-flex items-center gap-1.5 rounded-full bg-[#C2410C] px-3.5 py-1.5 font-display text-xs font-bold text-white shadow-sm hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
             >
-              <option value="" disabled>
-                Load preset...
-              </option>
-              {SHOWCASE_PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
+              <span>✦</span>
+              <span>Go Premium</span>
+            </a>
 
             <button
               type="button"
