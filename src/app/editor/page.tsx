@@ -235,13 +235,20 @@ function EditorWorkspace() {
   const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setBgImage(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    if (bgImage && bgImage.startsWith("blob:")) {
+      URL.revokeObjectURL(bgImage);
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setBgImage(objectUrl);
+    setExportState((s) => ({ ...s, error: null }));
+    e.target.value = "";
+  };
+
+  const handleClearBgImage = () => {
+    if (bgImage && bgImage.startsWith("blob:")) {
+      URL.revokeObjectURL(bgImage);
+    }
+    setBgImage(null);
   };
 
   const handleSvgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -694,6 +701,9 @@ function EditorWorkspace() {
                 onProgress={handleProgress}
                 onUnitsDetected={setUnitsCount}
                 onLayerDrag={handleLayerDrag}
+                onBgImageError={(msg) =>
+                  setExportState((s) => ({ ...s, error: msg }))
+                }
                 className="rounded-xl border border-[var(--border-subtle)] shadow-lg"
               />
             </div>
@@ -881,14 +891,22 @@ function EditorWorkspace() {
                     />
                   </label>
                   {bgImage && (
-                    <button
-                      type="button"
-                      onClick={() => setBgImage(null)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] uppercase hover:text-red-500"
-                    >
-                      <X className="h-3 w-3" />
-                      Clear BG
-                    </button>
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={bgImage}
+                        alt="Background preview"
+                        className="h-7 w-10 rounded-md border border-[var(--border-subtle)] object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleClearBgImage}
+                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] uppercase hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                        Clear BG
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

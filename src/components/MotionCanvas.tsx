@@ -21,6 +21,7 @@ interface MotionCanvasProps {
   onProgress?: (progress: number) => void;
   onUnitsDetected?: (count: number) => void;
   onLayerDrag?: (layerId: string, dx: number, dy: number) => void;
+  onBgImageError?: (message: string) => void;
   className?: string;
 }
 
@@ -35,6 +36,7 @@ export function MotionCanvas({
   onProgress,
   onUnitsDetected,
   onLayerDrag,
+  onBgImageError,
   className = "",
 }: MotionCanvasProps) {
   const internalRef = useRef<HTMLCanvasElement | null>(null);
@@ -42,6 +44,9 @@ export function MotionCanvas({
   const parsedSvgRef = useRef<ParsedSvg | null>(null);
   const parsedSvgsMapRef = useRef<Map<string, ParsedSvg | null>>(new Map());
   const bgImgRef = useRef<HTMLImageElement | null>(null);
+  const onBgImageErrorRef = useRef(onBgImageError);
+  onBgImageErrorRef.current = onBgImageError;
+  const [bgVersion, setBgVersion] = useState(0);
   const elapsedRef = useRef(0);
   const lastTimeRef = useRef<number | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
@@ -54,17 +59,39 @@ export function MotionCanvas({
     elapsedRef.current = 0;
   }, [replayNonce, config.template]);
 
-  // Load uploaded background image
+  // Load uploaded background image reliably (supports Blob URLs & Data URLs)
   useEffect(() => {
+    let cancelled = false;
     if (!effectiveBgImage) {
       bgImgRef.current = null;
+      setBgVersion((v) => v + 1);
       return;
     }
+
     const img = new Image();
     img.onload = () => {
+      if (cancelled) return;
       bgImgRef.current = img;
+      setBgVersion((v) => v + 1);
+    };
+    img.onerror = () => {
+      if (cancelled) return;
+      bgImgRef.current = null;
+      setBgVersion((v) => v + 1);
+      onBgImageErrorRef.current?.(
+        "Format gambar tidak didukung browser. Gunakan JPG, PNG, atau WebP."
+      );
     };
     img.src = effectiveBgImage;
+
+    if (img.complete && img.naturalWidth > 0) {
+      bgImgRef.current = img;
+      setBgVersion((v) => v + 1);
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [effectiveBgImage]);
 
   // Parse SVG for single-config mode or multi-layer mode
@@ -179,7 +206,7 @@ export function MotionCanvas({
     return () => {
       cancelAnimationFrame(rafId);
     };
-  }, [config, layers, isPlaying, dims.width, dims.height, canvasRef, onProgress]);
+  }, [config, layers, isPlaying, dims.width, dims.height, canvasRef, onProgress, bgVersion]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!onLayerDrag) return;
