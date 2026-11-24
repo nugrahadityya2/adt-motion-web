@@ -62,9 +62,8 @@ export default function HomePage() {
 
               <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-[var(--text-muted)] sm:text-lg">
                 Stack multiple typography or SVG layers on one canvas, drag them
-                into position, place photos or video clips behind your text,
-                sync motion to music BPM, and export WebM, MP4, GIF, or
-                HTML/CSS locally.
+                into position, place photos or video clips behind your text, and
+                export WebM, MP4, GIF, or HTML/CSS locally.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -162,12 +161,12 @@ export default function HomePage() {
               </div>
               <div className="py-5">
                 <h3 className="font-display text-lg font-bold tracking-tight">
-                  Music BPM sync and HTML/CSS code export
+                  4K video, transparent GIF, and HTML/CSS code export
                 </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">
-                  Match loop timing to your soundtrack with Tap Tempo or an
-                  exact BPM value. Export up to 4K video, transparent GIF, or a
-                  lightweight HTML/CSS snippet for Framer, Webflow, and Next.js.
+                  Render up to 4K 60fps video, transparent GIFs, or copy a
+                  lightweight HTML/CSS snippet straight into Framer, Webflow,
+                  and Next.js.
                 </p>
               </div>
             </div>

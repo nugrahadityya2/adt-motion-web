@@ -61,8 +61,6 @@ export interface MotionConfig {
   aspectRatio: AspectRatio;
   circleRadius: number;
   loopDurationSec: number;
-  bpmEnabled?: boolean;
-  bpm?: number;
   // Contextual motion tuning controls
   pattern: PatternOption;
   direction: DirectionOption;
@@ -480,11 +478,6 @@ function computeUnitTransform(
 export type BgMediaElement = HTMLImageElement | HTMLVideoElement | null;
 
 export function getEffectiveLoopSec(config: MotionConfig): number {
-  if (config.bpmEnabled && config.bpm && config.bpm >= 40) {
-    // 4 beats (1 musical bar) scaled by speed multiplier
-    const barSec = (60 / config.bpm) * 4;
-    return Math.max(0.4, barSec / Math.max(0.25, config.speed));
-  }
   return Math.max(0.5, config.loopDurationSec / Math.max(0.2, config.speed));
 }
 

@@ -22,7 +22,6 @@ import {
   Code2,
   Copy,
   Check,
-  Music,
   Shield,
 } from "lucide-react";
 import {
@@ -108,7 +107,6 @@ function EditorWorkspace() {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [showProModal, setShowProModal] = useState(false);
-  const tapTimesRef = useRef<number[]>([]);
   const activeLayer =
     layers.find((l) => l.id === activeLayerId) ?? layers[0];
   const config = activeLayer.config;
@@ -267,25 +265,6 @@ function EditorWorkspace() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  const handleTapTempo = () => {
-    const now = performance.now();
-    const recent = tapTimesRef.current.filter((ts) => now - ts < 2500);
-    recent.push(now);
-    tapTimesRef.current = recent.slice(-5);
-
-    if (recent.length >= 2) {
-      let sum = 0;
-      for (let i = 1; i < recent.length; i++) {
-        sum += recent[i] - recent[i - 1];
-      }
-      const avgMs = sum / (recent.length - 1);
-      const bpm = Math.min(200, Math.max(60, Math.round(60000 / avgMs)));
-      setConfig((prev) => ({ ...prev, bpmEnabled: true, bpm }));
-    } else {
-      setConfig((prev) => ({ ...prev, bpmEnabled: true, bpm: prev.bpm ?? 120 }));
-    }
-  };
 
   const handleBgMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -896,53 +875,6 @@ function EditorWorkspace() {
               unit="%"
               onChange={(v) => updateConfig("intensity", v)}
             />
-
-            {/* BPM Music Sync */}
-            <div className="space-y-2.5 border-t border-[var(--border-subtle)] pt-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
-                  <Music className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
-                  BPM Sync
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handleTapTempo}
-                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[10px] text-[var(--text-main)] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]"
-                  >
-                    Tap
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        bpmEnabled: !prev.bpmEnabled,
-                        bpm: prev.bpm ?? 120,
-                      }))
-                    }
-                    className={`rounded-lg border px-2 py-0.5 font-mono text-[10px] uppercase ${
-                      config.bpmEnabled
-                        ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
-                        : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
-                    }`}
-                  >
-                    {config.bpmEnabled ? "ON" : "OFF"}
-                  </button>
-                </div>
-              </div>
-              {config.bpmEnabled && (
-                <EditorRangeSlider
-                  label="Tempo"
-                  value={config.bpm ?? 120}
-                  min={60}
-                  max={200}
-                  step={1}
-                  unit=" BPM"
-                  onChange={(v) => updateConfig("bpm", v)}
-                />
-              )}
-            </div>
 
             {config.mode === "text" && (
               <div className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
