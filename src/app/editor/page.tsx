@@ -34,7 +34,6 @@ import {
 import {
   DEFAULT_CONFIG,
   SAMPLE_SVGS,
-  SHOWCASE_PRESETS,
 } from "@/lib/presets";
 import { exportMotionVideo, exportToGif } from "@/lib/exporter";
 import {
