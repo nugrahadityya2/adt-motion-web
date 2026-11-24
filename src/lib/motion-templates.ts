@@ -35,7 +35,16 @@ export type MotionTemplate =
   | "signal-scan"
   | "whiplash-snap"
   | "turbulent-shake"
-  | "magnetic-slam";
+  | "magnetic-slam"
+  | "cipher-decode"
+  | "outline-sweep"
+  | "vhs-drift"
+  | "tracking-breathe"
+  | "slot-roll"
+  | "highlighter-wipe"
+  | "cylinder-spin"
+  | "echo-trail"
+  | "pendulum-swing";
 
 export type DetailSectionType =
   | "pattern"
@@ -339,5 +348,68 @@ export const TEMPLATE_META: TemplateDefinition[] = [
     name: "Magnet Lock",
     description: "Off-axis units snapping together with recoil",
     detailType: "pattern",
+  },
+  {
+    id: "pendulum-swing",
+    category: "Physics",
+    name: "Pendulum Swing",
+    description: "Glyphs hang from top pivots and sway smoothly",
+    detailType: "wave",
+  },
+  {
+    id: "cipher-decode",
+    category: "Glitch",
+    name: "Cipher Decode",
+    description: "Scrambles characters through symbols before locking",
+    detailType: "none",
+  },
+  {
+    id: "vhs-drift",
+    category: "Glitch",
+    name: "VHS Scan Drift",
+    description: "Retro horizontal tape drift with subtle scan jitter",
+    detailType: "glitch",
+  },
+  {
+    id: "outline-sweep",
+    category: "Editorial",
+    name: "Outline Sweep",
+    description: "Hollow stroke type filling with solid ink across the line",
+    detailType: "none",
+  },
+  {
+    id: "slot-roll",
+    category: "Editorial",
+    name: "Slot Roll",
+    description: "Vertical odometer spin settling onto each character",
+    detailType: "none",
+  },
+  {
+    id: "highlighter-wipe",
+    category: "Editorial",
+    name: "Highlighter Wipe",
+    description: "Editorial accent marker sweeping cleanly behind text",
+    detailType: "none",
+  },
+  {
+    id: "tracking-breathe",
+    category: "Loops",
+    name: "Tracking Breathe",
+    description: "Rhythmic kerning expansion and contraction loop",
+    detailType: "none",
+  },
+  {
+    id: "cylinder-spin",
+    category: "Loops",
+    name: "3D Cylinder Spin",
+    description: "Horizontal 3D barrel orbit with depth scaling",
+    detailType: "none",
+  },
+  {
+    id: "echo-trail",
+    category: "Loops",
+    name: "Echo Trail",
+    description: "Layered onion-skin ghost copies trailing the main motion",
+    detailType: "none",
   },
 ];

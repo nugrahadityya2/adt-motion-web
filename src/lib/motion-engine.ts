@@ -468,6 +468,25 @@ function computeUnitTransform(
       out.rotate = Math.sin(t * 100 + gIdx) * decay * 0.25 * intensity;
       break;
     }
+    case "vhs-drift": {
+      const band = Math.sin(t * 36 + gIdx * 0.8) > 0.72 ? 1 : 0;
+      out.dx =
+        Math.sin(phase * 2 + gIdx * 0.3) * 6 * intensity * scale +
+        band * Math.sin(t * 90 + gIdx) * 16 * intensity * scale;
+      out.rgbSplit = band * 8 * intensity * scale;
+      out.alpha = 0.85 + Math.sin(t * 60 + gIdx) * 0.15;
+      break;
+    }
+    case "pendulum-swing": {
+      const freq =
+        config.waveDensity === "loose"
+          ? 0.25
+          : config.waveDensity === "tight"
+            ? 0.65
+            : 0.4;
+      out.rotate = Math.sin(phase - gIdx * freq) * 0.38 * intensity;
+      break;
+    }
     default:
       break;
   }
@@ -524,6 +543,10 @@ export function renderMotionFrame(
 
   if (config.template === "circle" || config.pattern === "circle") {
     renderCircleTemplate(ctx, width, height, config, rawText, normalizedTime);
+  } else if (config.template === "cylinder-spin") {
+    renderCylinderSpinTemplate(ctx, width, height, config, rawText, normalizedTime);
+  } else if (config.template === "echo-trail") {
+    renderEchoTrailTemplate(ctx, width, height, config, rawText, normalizedTime);
   } else if (
     config.template === "marquee-3d" ||
     config.template === "marquee-vertical" ||
@@ -611,6 +634,118 @@ function drawCoverMedia(
     dy = (h - drawH) / 2;
   }
   ctx.drawImage(media, dx, dy, drawW, drawH);
+}
+
+function renderCylinderSpinTemplate(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  config: MotionConfig,
+  rawText: string,
+  t: number
+) {
+  const cx = width / 2;
+  const cy = height / 2;
+  const scale = Math.min(width, height) / 800;
+  const fontSize = Math.max(18, config.fontSize * 0.9 * scale);
+  ctx.font = resolveCanvasFont(
+    config.font,
+    fontSize,
+    config.fontWeight,
+    config.fontStyle
+  );
+
+  const singleLine = rawText.replace(/\n+/g, " • ") + " • ";
+  const chars = Array.from(singleLine);
+  const count = chars.length;
+  const radiusX = width * 0.36;
+  const intensity = config.intensity / 100;
+
+  // Depth-sort glyphs so front glyphs draw over back glyphs
+  const items = chars.map((ch, i) => {
+    const theta = (i / count) * Math.PI * 2 + t * Math.PI * 2;
+    const depth = Math.cos(theta); // -1 (back) .. 1 (front)
+    return { ch, theta, depth };
+  });
+  items.sort((a, b) => a.depth - b.depth);
+
+  for (const item of items) {
+    const x = cx + Math.sin(item.theta) * radiusX;
+    const y = cy + Math.sin(item.theta * 2) * 14 * intensity * scale;
+    const scaleX = Math.max(0.08, Math.abs(item.depth));
+    const scaleY = 0.72 + ((item.depth + 1) / 2) * 0.36;
+    const alpha = 0.12 + ((item.depth + 1) / 2) * 0.88;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.scale(scaleX * (item.depth < 0 ? -1 : 1), scaleY);
+    ctx.fillStyle = config.color;
+    ctx.fillText(item.ch, 0, 0);
+    ctx.restore();
+  }
+}
+
+function renderEchoTrailTemplate(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  config: MotionConfig,
+  rawText: string,
+  t: number
+) {
+  const scale = Math.min(width, height) / 800;
+  let fontSize = Math.max(18, config.fontSize * scale);
+  ctx.font = resolveCanvasFont(
+    config.font,
+    fontSize,
+    config.fontWeight,
+    config.fontStyle
+  );
+
+  const lines = rawText.split("\n");
+  if (config.autoFit) {
+    const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width), 1);
+    const maxAllowed = width * 0.8;
+    if (maxW > maxAllowed) {
+      fontSize = Math.max(14, fontSize * (maxAllowed / maxW));
+      ctx.font = resolveCanvasFont(
+        config.font,
+        fontSize,
+        config.fontWeight,
+        config.fontStyle
+      );
+    }
+  }
+
+  const intensity = config.intensity / 100;
+  const lineH = fontSize * config.lineHeight;
+  const totalH = lines.length * lineH;
+  const startY = height / 2 - totalH / 2 + lineH / 2;
+  const copies = 5;
+
+  for (let c = copies; c >= 0; c--) {
+    const laggedT = (t - c * 0.045 + 1) % 1;
+    const phase = laggedT * Math.PI * 2;
+    const dx = Math.sin(phase) * 34 * intensity * scale;
+    const dy = Math.cos(phase * 2) * 26 * intensity * scale;
+    const alpha = c === 0 ? 1 : 0.14 + ((copies - c) / copies) * 0.26;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = config.color;
+    ctx.strokeStyle = config.color;
+    ctx.lineWidth = Math.max(1.2, fontSize * 0.025);
+    lines.forEach((line, idx) => {
+      const y = startY + idx * lineH + dy;
+      if (c === 0) {
+        ctx.fillText(line, width / 2 + dx, y);
+      } else {
+        ctx.strokeText(line, width / 2 + dx, y);
+      }
+    });
+    ctx.restore();
+  }
 }
 
 function renderCircleTemplate(
@@ -745,7 +880,12 @@ function renderGlyphTemplate(
 ) {
   const scale = Math.min(width, height) / 800;
   let fontSize = Math.max(16, config.fontSize * scale);
-  let kerning = config.letterSpacing * scale;
+  const intensity = config.intensity / 100;
+  const trackingBoost =
+    config.template === "tracking-breathe"
+      ? (Math.sin(t * Math.PI * 2) * 0.5 + 0.5) * 26 * intensity * scale
+      : 0;
+  let kerning = config.letterSpacing * scale + trackingBoost;
   ctx.font = resolveCanvasFont(
     config.font,
     fontSize,
@@ -794,6 +934,25 @@ function renderGlyphTemplate(
     let cursorX = width / 2 - totalLineWidth / 2;
     const baseY = startY + lineIdx * lineHeight;
 
+    // Highlighter Wipe: draw sweeping editorial marker behind the line
+    if (config.template === "highlighter-wipe") {
+      const wipeT = easeInOutCubic(Math.min(1, ((t * 1.4 - lineIdx * 0.12 + 1) % 1) / 0.7));
+      const padX = 14 * scale;
+      const barH = fontSize * 1.04;
+      ctx.save();
+      ctx.fillStyle = "#FF6D29";
+      ctx.globalAlpha = 0.28;
+      ctx.fillRect(
+        width / 2 - totalLineWidth / 2 - padX,
+        baseY - barH / 2,
+        (totalLineWidth + padX * 2) * wipeT,
+        barH
+      );
+      ctx.restore();
+    }
+
+    const CIPHER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&*";
+
     chars.forEach((ch, idx) => {
       const charW = widths[idx];
       const cx = cursorX + charW / 2;
@@ -810,6 +969,83 @@ function renderGlyphTemplate(
       );
 
       if (!tr.visible) return;
+
+      // Special per-glyph templates: cipher-decode, slot-roll, outline-sweep, pendulum-swing
+      if (config.template === "cipher-decode") {
+        const delay = (gIdx / Math.max(1, totalUnits)) * 0.45;
+        const localT = (t - delay + 1) % 1;
+        const locked = localT > 0.35 && localT < 0.92;
+        const displayChar =
+          locked || ch === " "
+            ? ch
+            : CIPHER_CHARS[
+                Math.floor(t * 28 + gIdx * 7) % CIPHER_CHARS.length
+              ];
+        ctx.save();
+        ctx.fillStyle = config.color;
+        ctx.globalAlpha = locked ? 1 : 0.72;
+        ctx.fillText(displayChar, cx, baseY);
+        ctx.restore();
+        return;
+      }
+
+      if (config.template === "slot-roll") {
+        const delay = (gIdx / Math.max(1, totalUnits)) * 0.35;
+        const localT = Math.min(1, ((t - delay + 1) % 1) / 0.55);
+        const easedRoll = easeOutCubic(localT);
+        const offsetSteps = (1 - easedRoll) * 3;
+        const stepFrac = offsetSteps % 1;
+        const altChar =
+          ch === " "
+            ? " "
+            : CIPHER_CHARS[
+                (Math.floor(offsetSteps) + gIdx * 5) % CIPHER_CHARS.length
+              ];
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(
+          cx - charW * 0.75,
+          baseY - lineHeight * 0.52,
+          charW * 1.5,
+          lineHeight * 1.04
+        );
+        ctx.clip();
+        ctx.fillStyle = config.color;
+        ctx.fillText(ch, cx, baseY - stepFrac * lineHeight);
+        if (offsetSteps > 0.02) {
+          ctx.globalAlpha = 0.6;
+          ctx.fillText(altChar, cx, baseY + (1 - stepFrac) * lineHeight);
+        }
+        ctx.restore();
+        return;
+      }
+
+      if (config.template === "outline-sweep") {
+        const sweepX =
+          width / 2 - totalLineWidth / 2 + totalLineWidth * easeInOutCubic(t);
+        ctx.save();
+        ctx.lineWidth = Math.max(1.5, fontSize * 0.04);
+        ctx.strokeStyle = config.color;
+        ctx.strokeText(ch, cx, baseY);
+        ctx.beginPath();
+        ctx.rect(0, baseY - lineHeight, sweepX, lineHeight * 2);
+        ctx.clip();
+        ctx.fillStyle = config.color;
+        ctx.fillText(ch, cx, baseY);
+        ctx.restore();
+        return;
+      }
+
+      if (config.template === "pendulum-swing") {
+        const pivotY = baseY - fontSize * 0.45;
+        ctx.save();
+        ctx.translate(cx, pivotY);
+        ctx.rotate(tr.rotate);
+        ctx.fillStyle = config.color;
+        ctx.fillText(ch, 0, fontSize * 0.45);
+        ctx.restore();
+        return;
+      }
 
       ctx.save();
 

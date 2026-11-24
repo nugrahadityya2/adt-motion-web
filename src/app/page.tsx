@@ -213,7 +213,7 @@ export default function HomePage() {
                 Ready to test your own headline or SVG?
               </h2>
               <p className="mt-1.5 max-w-xl text-sm text-[var(--text-muted)]">
-                14 fonts, 37 motion styles, video backgrounds, and local export.
+                14 fonts, 46 motion styles, video backgrounds, and local export.
               </p>
             </div>
             <Link
