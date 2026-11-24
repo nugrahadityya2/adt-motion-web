@@ -53,6 +53,9 @@ export interface MotionConfig {
   intensity: number;
   color: string;
   bgColor: string;
+  bgImage?: string | null;
+  offsetX?: number;
+  offsetY?: number;
   aspectRatio: AspectRatio;
   circleRadius: number;
   loopDurationSec: number;
@@ -66,6 +69,13 @@ export interface MotionConfig {
   waveDensity: WaveDensityOption;
   tilt: number;
   jitterAxis: JitterAxisOption;
+}
+
+export interface MotionLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  config: MotionConfig;
 }
 
 export const ASPECT_DIMENSIONS: Record<
@@ -469,14 +479,28 @@ export function renderMotionFrame(
   height: number,
   config: MotionConfig,
   normalizedTime: number,
-  parsedSvg?: ParsedSvg | null
+  parsedSvg?: ParsedSvg | null,
+  bgImageEl?: HTMLImageElement | null,
+  skipBackground = false
 ): void {
   ctx.save();
-  ctx.clearRect(0, 0, width, height);
+  if (!skipBackground) {
+    ctx.clearRect(0, 0, width, height);
 
-  if (config.bgColor && config.bgColor !== "transparent") {
-    ctx.fillStyle = config.bgColor;
-    ctx.fillRect(0, 0, width, height);
+    if (config.bgColor && config.bgColor !== "transparent") {
+      ctx.fillStyle = config.bgColor;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    if (bgImageEl && bgImageEl.complete && bgImageEl.naturalWidth > 0) {
+      drawCoverImage(ctx, bgImageEl, width, height);
+    }
+  }
+
+  const ox = (config.offsetX ?? 0) * (width / 800);
+  const oy = (config.offsetY ?? 0) * (height / 800);
+  if (ox !== 0 || oy !== 0) {
+    ctx.translate(ox, oy);
   }
 
   if (config.mode === "svg" && parsedSvg && parsedSvg.units.length > 0) {
@@ -503,6 +527,72 @@ export function renderMotionFrame(
   }
 
   ctx.restore();
+}
+
+export function renderCompositeFrame(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  layers: MotionLayer[],
+  bgColor: string,
+  bgImageEl: HTMLImageElement | null,
+  elapsedSec: number,
+  parsedSvgsMap: Map<string, ParsedSvg | null>
+): void {
+  ctx.save();
+  ctx.clearRect(0, 0, width, height);
+
+  if (bgColor && bgColor !== "transparent") {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  if (bgImageEl && bgImageEl.complete && bgImageEl.naturalWidth > 0) {
+    drawCoverImage(ctx, bgImageEl, width, height);
+  }
+
+  for (const layer of layers) {
+    if (!layer.visible) continue;
+    const loopSec = Math.max(
+      0.5,
+      layer.config.loopDurationSec / Math.max(0.2, layer.config.speed)
+    );
+    const t = (elapsedSec / loopSec) % 1;
+    renderMotionFrame(
+      ctx,
+      width,
+      height,
+      layer.config,
+      t,
+      parsedSvgsMap.get(layer.id) ?? null,
+      null,
+      true
+    );
+  }
+
+  ctx.restore();
+}
+
+function drawCoverImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  w: number,
+  h: number
+) {
+  const imgRatio = img.naturalWidth / Math.max(1, img.naturalHeight);
+  const canvasRatio = w / Math.max(1, h);
+  let drawW = w;
+  let drawH = h;
+  let dx = 0;
+  let dy = 0;
+  if (imgRatio > canvasRatio) {
+    drawW = h * imgRatio;
+    dx = (w - drawW) / 2;
+  } else {
+    drawH = w / imgRatio;
+    dy = (h - drawH) / 2;
+  }
+  ctx.drawImage(img, dx, dy, drawW, drawH);
 }
 
 function renderCircleTemplate(

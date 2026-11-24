@@ -4,9 +4,11 @@ import {
   ExportFps,
   ExportResolution,
   MotionConfig,
+  MotionLayer,
+  renderCompositeFrame,
   renderMotionFrame,
 } from "./motion-engine";
-import { parseSvgToUnits } from "./svg-parser";
+import { ParsedSvg, parseSvgToUnits } from "./svg-parser";
 
 const RESOLUTION_SCALE: Record<ExportResolution, number> = {
   "240p": 0.3,
@@ -43,12 +45,46 @@ function triggerDownload(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+async function loadImageFromSrc(src?: string | null): Promise<HTMLImageElement | null> {
+  if (!src) return null;
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = src;
+    });
+    return img;
+  } catch {
+    return null;
+  }
+}
+
+async function buildParsedSvgsMap(
+  layers?: MotionLayer[]
+): Promise<Map<string, ParsedSvg | null>> {
+  const map = new Map<string, ParsedSvg | null>();
+  if (!layers) return map;
+  await Promise.all(
+    layers.map(async (layer) => {
+      if (layer.config.mode === "svg" && layer.config.svgMarkup) {
+        map.set(layer.id, await parseSvgToUnits(layer.config.svgMarkup));
+      } else {
+        map.set(layer.id, null);
+      }
+    })
+  );
+  return map;
+}
+
 export async function exportMotionVideo(
   config: MotionConfig,
   format: "webm" | "mp4",
   resolution: ExportResolution = "1080p",
   fps: ExportFps = 30,
-  onProgress?: (pct: number) => void
+  onProgress?: (pct: number) => void,
+  layers?: MotionLayer[],
+  bgImage?: string | null
 ): Promise<{ actualFormat: "webm" | "mp4" }> {
   if (typeof MediaRecorder === "undefined") {
     throw new Error("MediaRecorder is not supported in this browser.");
@@ -66,7 +102,11 @@ export async function exportMotionVideo(
   if (!ctx) throw new Error("Could not initialize 2D canvas context.");
 
   const parsedSvg =
-    config.mode === "svg" ? await parseSvgToUnits(config.svgMarkup) : null;
+    !layers && config.mode === "svg"
+      ? await parseSvgToUnits(config.svgMarkup)
+      : null;
+  const parsedSvgsMap = await buildParsedSvgsMap(layers);
+  const bgImgEl = await loadImageFromSrc(bgImage ?? config.bgImage);
 
   let actualFormat: "webm" | "mp4" = format;
   let mimeType = "video/webm";
@@ -99,8 +139,11 @@ export async function exportMotionVideo(
     if (e.data.size > 0) chunks.push(e.data);
   };
 
-  const loopMs =
-    Math.max(0.5, config.loopDurationSec / Math.max(0.2, config.speed)) * 1000;
+  const loopSec = Math.max(
+    0.5,
+    config.loopDurationSec / Math.max(0.2, config.speed)
+  );
+  const loopMs = loopSec * 1000;
 
   await new Promise<void>((resolve) => {
     recorder.onstop = () => resolve();
@@ -110,7 +153,20 @@ export async function exportMotionVideo(
     const tick = (now: number) => {
       const elapsed = now - start;
       const t = Math.min(1, elapsed / loopMs);
-      renderMotionFrame(ctx, width, height, config, t % 1, parsedSvg);
+      if (layers && layers.length > 0) {
+        renderCompositeFrame(
+          ctx,
+          width,
+          height,
+          layers,
+          config.bgColor,
+          bgImgEl,
+          elapsed / 1000,
+          parsedSvgsMap
+        );
+      } else {
+        renderMotionFrame(ctx, width, height, config, t % 1, parsedSvg, bgImgEl);
+      }
       onProgress?.(Math.round(t * 100));
 
       if (elapsed < loopMs) {
@@ -133,7 +189,9 @@ export async function exportToGif(
   config: MotionConfig,
   resolution: ExportResolution = "720p",
   fps: ExportFps = 24,
-  onProgress?: (pct: number) => void
+  onProgress?: (pct: number) => void,
+  layers?: MotionLayer[],
+  bgImage?: string | null
 ): Promise<void> {
   const baseDims = ASPECT_DIMENSIONS[config.aspectRatio];
   const mult = Math.min(1, RESOLUTION_SCALE[resolution] * 0.75);
@@ -147,7 +205,11 @@ export async function exportToGif(
   if (!ctx) throw new Error("Could not initialize 2D canvas context.");
 
   const parsedSvg =
-    config.mode === "svg" ? await parseSvgToUnits(config.svgMarkup) : null;
+    !layers && config.mode === "svg"
+      ? await parseSvgToUnits(config.svgMarkup)
+      : null;
+  const parsedSvgsMap = await buildParsedSvgsMap(layers);
+  const bgImgEl = await loadImageFromSrc(bgImage ?? config.bgImage);
 
   const loopSec = Math.max(
     0.5,
@@ -155,13 +217,26 @@ export async function exportToGif(
   );
   const totalFrames = Math.max(12, Math.round(loopSec * fps));
   const delayMs = Math.round(1000 / fps);
-  const isTransparent = config.bgColor === "transparent";
+  const isTransparent = config.bgColor === "transparent" && !bgImgEl;
 
   const gif = GIFEncoder();
 
   for (let i = 0; i < totalFrames; i++) {
     const t = i / totalFrames;
-    renderMotionFrame(ctx, w, h, config, t, parsedSvg);
+    if (layers && layers.length > 0) {
+      renderCompositeFrame(
+        ctx,
+        w,
+        h,
+        layers,
+        config.bgColor,
+        bgImgEl,
+        t * loopSec,
+        parsedSvgsMap
+      );
+    } else {
+      renderMotionFrame(ctx, w, h, config, t, parsedSvg, bgImgEl);
+    }
     const { data } = ctx.getImageData(0, 0, w, h);
 
     const palette = quantize(data, 256, {

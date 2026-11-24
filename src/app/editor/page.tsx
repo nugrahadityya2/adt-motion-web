@@ -12,6 +12,13 @@ import {
   FileCode2,
   Type,
   RefreshCw,
+  Plus,
+  Eye,
+  EyeOff,
+  Trash2,
+  Move,
+  Image as ImageIcon,
+  X,
 } from "lucide-react";
 import { MotionCanvas } from "@/components/MotionCanvas";
 import { EditorRangeSlider } from "@/components/EditorRangeSlider";
@@ -27,6 +34,7 @@ import {
   FontWeightOption,
   JitterAxisOption,
   MotionConfig,
+  MotionLayer,
   MotionTemplate,
   TEMPLATE_META,
   WaveDensityOption,
@@ -74,7 +82,34 @@ function EditorWorkspace() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
 
-  const [config, setConfig] = useState<MotionConfig>(DEFAULT_CONFIG);
+  const [layers, setLayers] = useState<MotionLayer[]>([
+    {
+      id: "layer-1",
+      name: "Motion 1",
+      visible: true,
+      config: DEFAULT_CONFIG,
+    },
+  ]);
+  const [activeLayerId, setActiveLayerId] = useState("layer-1");
+  const [bgImage, setBgImage] = useState<string | null>(null);
+  const activeLayer =
+    layers.find((l) => l.id === activeLayerId) ?? layers[0];
+  const config = activeLayer.config;
+
+  const setConfig = useCallback(
+    (updater: MotionConfig | ((prev: MotionConfig) => MotionConfig)) => {
+      setLayers((prevLayers) =>
+        prevLayers.map((layer) => {
+          if (layer.id !== activeLayer.id) return layer;
+          const nextConfig =
+            typeof updater === "function" ? updater(layer.config) : updater;
+          return { ...layer, config: nextConfig };
+        })
+      );
+    },
+    [activeLayer.id]
+  );
+
   const [isPlaying, setIsPlaying] = useState(true);
   const [replayNonce, setReplayNonce] = useState(0);
   const [unitsCount, setUnitsCount] = useState(24);
@@ -144,6 +179,71 @@ function EditorWorkspace() {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleLayerDrag = useCallback(
+    (layerId: string, dx: number, dy: number) => {
+      setLayers((prev) =>
+        prev.map((l) =>
+          l.id === layerId
+            ? {
+                ...l,
+                config: {
+                  ...l.config,
+                  offsetX: (l.config.offsetX ?? 0) + dx,
+                  offsetY: (l.config.offsetY ?? 0) + dy,
+                },
+              }
+            : l
+        )
+      );
+    },
+    []
+  );
+
+  const handleAddLayer = () => {
+    const idx = layers.length + 1;
+    const newId = `layer-${Date.now()}`;
+    const newLayer: MotionLayer = {
+      id: newId,
+      name: `Motion ${idx}`,
+      visible: true,
+      config: {
+        ...DEFAULT_CONFIG,
+        text: `LAYER ${idx}`,
+        template: "wave",
+        offsetY: 90,
+      },
+    };
+    setLayers((prev) => [...prev, newLayer]);
+    setActiveLayerId(newId);
+  };
+
+  const handleToggleLayerVisibility = (id: string) => {
+    setLayers((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l))
+    );
+  };
+
+  const handleDeleteLayer = (id: string) => {
+    if (layers.length <= 1) return;
+    const next = layers.filter((l) => l.id !== id);
+    setLayers(next);
+    if (activeLayerId === id) {
+      setActiveLayerId(next[0].id);
+    }
+  };
+
+  const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setBgImage(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSvgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -167,8 +267,13 @@ function EditorWorkspace() {
     setExportState({ active: true, progress: 0, notice: null, error: null });
     try {
       if (exportFormat === "gif") {
-        await exportToGif(config, exportRes, exportFps, (progress) =>
-          setExportState((s) => ({ ...s, progress }))
+        await exportToGif(
+          config,
+          exportRes,
+          exportFps,
+          (progress) => setExportState((s) => ({ ...s, progress })),
+          layers,
+          bgImage
         );
         recordExportUsage();
         setExportState({ active: false, progress: 100, notice: "GIF exported!", error: null });
@@ -178,7 +283,9 @@ function EditorWorkspace() {
           exportFormat,
           exportRes,
           exportFps,
-          (progress) => setExportState((s) => ({ ...s, progress }))
+          (progress) => setExportState((s) => ({ ...s, progress })),
+          layers,
+          bgImage
         );
         recordExportUsage();
         const note =
@@ -447,6 +554,64 @@ function EditorWorkspace() {
             </div>
           )}
 
+          {/* Multi-Layer Bar */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2">
+            <span className="mr-1 font-mono text-[10px] tracking-widest text-[var(--text-muted)] uppercase">
+              Layers:
+            </span>
+            {layers.map((layer) => {
+              const isActive = layer.id === activeLayer.id;
+              return (
+                <div
+                  key={layer.id}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                    isActive
+                      ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-main)]"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveLayerId(layer.id)}
+                    className="font-display font-semibold"
+                  >
+                    {layer.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleLayerVisibility(layer.id)}
+                    aria-label={layer.visible ? "Hide layer" : "Show layer"}
+                    className="opacity-75 hover:opacity-100"
+                  >
+                    {layer.visible ? (
+                      <Eye className="h-3 w-3" />
+                    ) : (
+                      <EyeOff className="h-3 w-3" />
+                    )}
+                  </button>
+                  {layers.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteLayer(layer.id)}
+                      aria-label="Delete layer"
+                      className="opacity-75 hover:opacity-100"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={handleAddLayer}
+              className="btn-tactile inline-flex items-center gap-1 rounded-full border border-dashed border-[#C2410C]/50 px-2.5 py-1 font-mono text-[10px] font-semibold text-[#C2410C] uppercase hover:bg-[#C2410C]/10 dark:border-[#FF6D29]/50 dark:text-[#FF6D29] dark:hover:bg-[#FF6D29]/10"
+            >
+              <Plus className="h-3 w-3" />
+              Add Motion
+            </button>
+          </div>
+
           {/* 02 PREVIEW Header */}
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px] tracking-widest text-[var(--text-muted)] uppercase">
             <div className="flex items-center gap-2">
@@ -467,6 +632,19 @@ function EditorWorkspace() {
               >
                 <RefreshCw className="h-3 w-3" />
                 Replay
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  updateConfig("offsetX", 0);
+                  updateConfig("offsetY", 0);
+                }}
+                title="Center active motion"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-main)]"
+              >
+                <Move className="h-3 w-3" />
+                Center
               </button>
 
               <button
@@ -507,11 +685,15 @@ function EditorWorkspace() {
             <div className="flex h-full max-h-[500px] w-full items-center justify-center">
               <MotionCanvas
                 config={config}
+                layers={layers}
+                activeLayerId={activeLayer.id}
+                bgImage={bgImage}
                 isPlaying={isPlaying}
                 replayNonce={replayNonce}
                 externalCanvasRef={canvasRef}
                 onProgress={handleProgress}
                 onUnitsDetected={setUnitsCount}
+                onLayerDrag={handleLayerDrag}
                 className="rounded-xl border border-[var(--border-subtle)] shadow-lg"
               />
             </div>
@@ -685,6 +867,29 @@ function EditorWorkspace() {
                       {bg.label}
                     </button>
                   ))}
+                </div>
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1.5 font-mono text-[10px] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]">
+                    <ImageIcon className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
+                    <span>{bgImage ? "Change BG Image" : "Upload BG Image"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBgImageUpload}
+                      className="sr-only"
+                    />
+                  </label>
+                  {bgImage && (
+                    <button
+                      type="button"
+                      onClick={() => setBgImage(null)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] uppercase hover:text-red-500"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear BG
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
