@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
+import { AdtLogoMark } from "./AdtLogoMark";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -17,11 +18,9 @@ export function SiteHeader() {
           href="/"
           className="flex items-center gap-2.5 text-[var(--text-main)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
         >
-          <span className="logo-animated inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#C2410C] font-display text-[11px] font-extrabold tracking-tight text-white ring-1 ring-black/10 dark:bg-[#FF6D29] dark:text-[#161316] dark:ring-white/20">
-            ADT
-          </span>
+          <AdtLogoMark className="logo-animated h-9 w-9 shrink-0 rounded-full shadow-xs" />
           <span className="font-display text-sm font-bold tracking-tight sm:text-base">
-            ADT Motion
+            ADT Motion Studio
           </span>
         </Link>
 

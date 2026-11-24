@@ -31,6 +31,7 @@ import {
 } from "@/components/MotionCanvas";
 import { EditorRangeSlider } from "@/components/EditorRangeSlider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AdtLogoMark } from "@/components/AdtLogoMark";
 import { generateHtmlCssEmbed } from "@/lib/code-exporter";
 import {
   ASPECT_DIMENSIONS,
@@ -391,16 +392,11 @@ function EditorWorkspace() {
               href="/"
               className="flex items-center gap-2.5 text-[var(--text-main)] hover:text-[#C2410C] dark:hover:text-[#FF6D29]"
             >
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#C2410C] font-display text-[10px] font-extrabold text-white dark:bg-[#FF6D29] dark:text-[#161316]">
-                ADT
-              </span>
+              <AdtLogoMark className="h-8 w-8 shrink-0 rounded-full" />
               <span className="font-display text-sm font-bold tracking-tight sm:text-base">
-                ADT Motion
+                ADT Motion Studio
               </span>
             </Link>
-            <span className="hidden rounded-full bg-[#C2410C]/12 px-2.5 py-0.5 font-mono text-[10px] font-medium text-[#C2410C] uppercase sm:inline-block dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]">
-              Studio
-            </span>
           </div>
 
           <div className="flex items-center gap-2">
