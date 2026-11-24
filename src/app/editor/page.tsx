@@ -370,9 +370,9 @@ function EditorWorkspace() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--bg-page)] text-[var(--text-main)]">
+    <div className="flex min-h-screen flex-col bg-[var(--bg-page)] text-[var(--text-main)] lg:h-screen lg:overflow-hidden">
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-40 shrink-0 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur-md">
         <div className="flex h-14 flex-wrap items-center justify-between gap-2 px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <Link
@@ -435,10 +435,10 @@ function EditorWorkspace() {
         </div>
       )}
 
-      {/* 3-Column Workspace matching TypeMotion video */}
-      <div className="grid flex-1 grid-cols-1 lg:grid-cols-12">
+      {/* 3-Column Studio Shell: Left & Right scroll independently, Center stays pinned */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-12 lg:overflow-hidden">
         {/* Left Sidebar: Categorized Motion Library */}
-        <aside className="flex flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] lg:col-span-3 lg:max-h-[calc(100vh-3.5rem)] lg:border-r lg:border-b-0">
+        <aside className="flex min-h-0 flex-col border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] lg:col-span-3 lg:h-full lg:border-r lg:border-b-0">
           <div className="border-b border-[var(--border-subtle)] px-4 py-3">
             <div className="flex items-center justify-between">
               <span className="font-display text-xs font-bold tracking-tight text-[var(--text-main)]">
@@ -509,8 +509,8 @@ function EditorWorkspace() {
           </div>
         </aside>
 
-        {/* 02 PREVIEW (Center Canvas + Source Input) */}
-        <section className="flex flex-col border-b border-[var(--border-subtle)] p-4 sm:p-5 lg:col-span-6 lg:border-r lg:border-b-0">
+        {/* Center: Pinned Canvas Stage */}
+        <section className="flex min-h-0 flex-col border-b border-[var(--border-subtle)] p-4 lg:col-span-6 lg:h-full lg:overflow-hidden lg:border-r lg:border-b-0">
           {/* Collapsible Source Input (Text / SVG) */}
           {showSourcePanel && (
             <div className="mb-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
@@ -800,8 +800,8 @@ function EditorWorkspace() {
           </div>
 
           {/* Canvas Stage */}
-          <div className="relative flex min-h-[340px] flex-1 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4">
-            <div className="flex h-full max-h-[500px] w-full items-center justify-center">
+          <div className="relative flex min-h-[280px] flex-1 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-3 sm:p-4 lg:min-h-0">
+            <div className="flex h-full w-full min-h-0 min-w-0 items-center justify-center">
               <MotionCanvas
                 config={config}
                 layers={layers}
@@ -855,7 +855,7 @@ function EditorWorkspace() {
         </section>
 
         {/* Right Sidebar: Inspector + Motion Tuning + Render & Export */}
-        <aside className="flex flex-col divide-y divide-[var(--border-subtle)] bg-[var(--bg-surface)] lg:col-span-3 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto">
+        <aside className="flex min-h-0 flex-col divide-y divide-[var(--border-subtle)] bg-[var(--bg-surface)] lg:col-span-3 lg:h-full lg:overflow-y-auto">
           {/* Inspector */}
           <div className="space-y-3.5 p-4">
             <div className="flex items-center justify-between">

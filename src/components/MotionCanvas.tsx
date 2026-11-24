@@ -309,7 +309,14 @@ export function MotionCanvas({
   };
 
   return (
-    <div className="relative flex max-h-full max-w-full items-center justify-center">
+    <div
+      className="relative max-h-full max-w-full shrink-0"
+      style={{
+        aspectRatio: `${dims.width} / ${dims.height}`,
+        height: dims.height >= dims.width ? "100%" : "auto",
+        width: dims.width > dims.height ? "100%" : "auto",
+      }}
+    >
       <canvas
         ref={canvasRef}
         width={dims.width}
@@ -318,7 +325,7 @@ export function MotionCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className={`block max-h-full max-w-full object-contain ${
+        className={`block h-full w-full ${
           config.bgColor === "transparent" && !effectiveBgMedia
             ? "checkerboard-bg"
             : ""
