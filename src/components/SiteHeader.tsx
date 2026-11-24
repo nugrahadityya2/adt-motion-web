@@ -23,9 +23,6 @@ export function SiteHeader() {
           <span className="font-display text-sm font-bold tracking-tight sm:text-base">
             ADT Motion
           </span>
-          <span className="hidden rounded-full border border-[#C2410C]/30 bg-[#C2410C]/10 px-2 py-0.5 font-mono text-[10px] font-medium tracking-widest text-[#C2410C] uppercase sm:inline-block dark:border-[#FF6D29]/30 dark:bg-[#FF6D29]/10 dark:text-[#FF6D29]">
-            BETA
-          </span>
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -37,14 +34,14 @@ export function SiteHeader() {
                 : "text-[var(--text-muted)] hover:text-[#C2410C] dark:hover:text-[#FF6D29]"
             }`}
           >
-            Showcase
+            Recipes
           </Link>
           <ThemeToggle />
           <Link
             href="/editor"
             className="btn-tactile rounded-full bg-[#C2410C] px-4 py-2 font-display text-xs font-bold text-white shadow-sm hover:opacity-90 sm:px-5 dark:bg-[#FF6D29] dark:text-[#161316]"
           >
-            Try It Free
+            Open Studio
           </Link>
         </div>
       </nav>

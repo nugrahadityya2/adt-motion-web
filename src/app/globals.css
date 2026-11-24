@@ -87,6 +87,21 @@ html.dark .hero-atmosphere {
     linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
 }
 
+/* Accessible interactive cursor affordances (R-39) */
+a[href],
+button:not(:disabled),
+select:not(:disabled),
+summary,
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled {
+  cursor: not-allowed;
+}
+
 /* Tactile button press */
 .btn-tactile {
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;

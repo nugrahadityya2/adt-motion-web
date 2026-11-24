@@ -100,9 +100,9 @@ const cormorantGaramond = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "ADT Motion — Kinetic Typography & Multi-Layer Motion Studio",
+  title: "ADT Motion: Kinetic Typography & Multi-Layer Motion Studio",
   description:
-    "Compose multi-layer kinetic typography, animate SVG marks, drag elements on canvas, add custom backgrounds, and render WebM, MP4, or GIF directly in your browser.",
+    "Compose multi-layer typography and SVG animations, drag elements on canvas, add photo or video backgrounds, sync to BPM, and export WebM, MP4, GIF, or HTML/CSS.",
 };
 
 export default function RootLayout({

@@ -19,10 +19,20 @@ import {
   Move,
   Image as ImageIcon,
   X,
+  Code2,
+  Copy,
+  Check,
+  Music,
+  Shield,
 } from "lucide-react";
-import { MotionCanvas } from "@/components/MotionCanvas";
+import {
+  BgMediaSource,
+  MotionCanvas,
+  SafeZoneMode,
+} from "@/components/MotionCanvas";
 import { EditorRangeSlider } from "@/components/EditorRangeSlider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { generateHtmlCssEmbed } from "@/lib/code-exporter";
 import {
   ASPECT_DIMENSIONS,
   AspectRatio,
@@ -93,7 +103,12 @@ function EditorWorkspace() {
     },
   ]);
   const [activeLayerId, setActiveLayerId] = useState("layer-1");
-  const [bgImage, setBgImage] = useState<string | null>(null);
+  const [bgMedia, setBgMedia] = useState<BgMediaSource | null>(null);
+  const [safeZone, setSafeZone] = useState<SafeZoneMode>("none");
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [showProModal, setShowProModal] = useState(false);
+  const tapTimesRef = useRef<number[]>([]);
   const activeLayer =
     layers.find((l) => l.id === activeLayerId) ?? layers[0];
   const config = activeLayer.config;
@@ -240,23 +255,58 @@ function EditorWorkspace() {
     }
   };
 
-  const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Escape key closes any open modal (R-32)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowCodeModal(false);
+        setShowProModal(false);
+        setShowLimitModal(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const handleTapTempo = () => {
+    const now = performance.now();
+    const recent = tapTimesRef.current.filter((ts) => now - ts < 2500);
+    recent.push(now);
+    tapTimesRef.current = recent.slice(-5);
+
+    if (recent.length >= 2) {
+      let sum = 0;
+      for (let i = 1; i < recent.length; i++) {
+        sum += recent[i] - recent[i - 1];
+      }
+      const avgMs = sum / (recent.length - 1);
+      const bpm = Math.min(200, Math.max(60, Math.round(60000 / avgMs)));
+      setConfig((prev) => ({ ...prev, bpmEnabled: true, bpm }));
+    } else {
+      setConfig((prev) => ({ ...prev, bpmEnabled: true, bpm: prev.bpm ?? 120 }));
+    }
+  };
+
+  const handleBgMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (bgImage && bgImage.startsWith("blob:")) {
-      URL.revokeObjectURL(bgImage);
+    if (bgMedia?.url.startsWith("blob:")) {
+      URL.revokeObjectURL(bgMedia.url);
     }
     const objectUrl = URL.createObjectURL(file);
-    setBgImage(objectUrl);
+    const type: "image" | "video" = file.type.startsWith("video/")
+      ? "video"
+      : "image";
+    setBgMedia({ url: objectUrl, type });
     setExportState((s) => ({ ...s, error: null }));
     e.target.value = "";
   };
 
-  const handleClearBgImage = () => {
-    if (bgImage && bgImage.startsWith("blob:")) {
-      URL.revokeObjectURL(bgImage);
+  const handleClearBgMedia = () => {
+    if (bgMedia?.url.startsWith("blob:")) {
+      URL.revokeObjectURL(bgMedia.url);
     }
-    setBgImage(null);
+    setBgMedia(null);
   };
 
   const handleSvgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -288,7 +338,7 @@ function EditorWorkspace() {
           exportFps,
           (progress) => setExportState((s) => ({ ...s, progress })),
           layers,
-          bgImage
+          bgMedia
         );
         recordExportUsage();
         setExportState({ active: false, progress: 100, notice: "GIF exported!", error: null });
@@ -300,7 +350,7 @@ function EditorWorkspace() {
           exportFps,
           (progress) => setExportState((s) => ({ ...s, progress })),
           layers,
-          bgImage
+          bgMedia
         );
         recordExportUsage();
         const note =
@@ -348,11 +398,12 @@ function EditorWorkspace() {
                 const url = getUpgradeUrl();
                 if (url) {
                   window.open(url, "_blank", "noopener,noreferrer");
+                } else {
+                  setShowProModal(true);
                 }
               }}
               className="btn-tactile inline-flex items-center gap-1.5 rounded-full bg-[#C2410C] px-3.5 py-1.5 font-display text-xs font-bold text-white shadow-sm hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
             >
-              <span>✦</span>
               <span>Go Premium</span>
             </button>
 
@@ -701,6 +752,33 @@ function EditorWorkspace() {
               </button>
 
               <div className="flex items-center gap-0.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5">
+                <span className="px-1.5 text-[var(--text-muted)]" title="Social Safe-Zone Guide">
+                  <Shield className="h-3 w-3" />
+                </span>
+                {(["none", "reels", "tiktok", "shorts"] as SafeZoneMode[]).map(
+                  (sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => {
+                        setSafeZone(sz);
+                        if (sz !== "none" && config.aspectRatio !== "9:16") {
+                          updateConfig("aspectRatio", "9:16");
+                        }
+                      }}
+                      className={`rounded-full px-2 py-0.5 font-mono text-[10px] uppercase ${
+                        safeZone === sz
+                          ? "bg-[#C2410C] text-white dark:bg-[#FF6D29] dark:text-[#161316]"
+                          : "text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {sz === "none" ? "Off" : sz}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <div className="flex items-center gap-0.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5">
                 {(Object.keys(ASPECT_DIMENSIONS) as AspectRatio[]).map(
                   (ratio) => (
                     <button
@@ -728,14 +806,15 @@ function EditorWorkspace() {
                 config={config}
                 layers={layers}
                 activeLayerId={activeLayer.id}
-                bgImage={bgImage}
+                bgMedia={bgMedia}
+                safeZone={safeZone}
                 isPlaying={isPlaying}
                 replayNonce={replayNonce}
                 externalCanvasRef={canvasRef}
                 onProgress={handleProgress}
                 onUnitsDetected={setUnitsCount}
                 onLayerDrag={handleLayerDrag}
-                onBgImageError={(msg) =>
+                onBgMediaError={(msg) =>
                   setExportState((s) => ({ ...s, error: msg }))
                 }
                 className="rounded-xl border border-[var(--border-subtle)] shadow-lg"
@@ -817,6 +896,53 @@ function EditorWorkspace() {
               unit="%"
               onChange={(v) => updateConfig("intensity", v)}
             />
+
+            {/* BPM Music Sync */}
+            <div className="space-y-2.5 border-t border-[var(--border-subtle)] pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
+                  <Music className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
+                  BPM Sync
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleTapTempo}
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[10px] text-[var(--text-main)] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]"
+                  >
+                    Tap
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        bpmEnabled: !prev.bpmEnabled,
+                        bpm: prev.bpm ?? 120,
+                      }))
+                    }
+                    className={`rounded-lg border px-2 py-0.5 font-mono text-[10px] uppercase ${
+                      config.bpmEnabled
+                        ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {config.bpmEnabled ? "ON" : "OFF"}
+                  </button>
+                </div>
+              </div>
+              {config.bpmEnabled && (
+                <EditorRangeSlider
+                  label="Tempo"
+                  value={config.bpm ?? 120}
+                  min={60}
+                  max={200}
+                  step={1}
+                  unit=" BPM"
+                  onChange={(v) => updateConfig("bpm", v)}
+                />
+              )}
+            </div>
 
             {config.mode === "text" && (
               <div className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
@@ -918,25 +1044,33 @@ function EditorWorkspace() {
                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                   <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1.5 font-mono text-[10px] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]">
                     <ImageIcon className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
-                    <span>{bgImage ? "Change BG Image" : "Upload BG Image"}</span>
+                    <span>
+                      {bgMedia ? "Change BG Media" : "Upload Image / Video"}
+                    </span>
                     <input
                       type="file"
-                      accept="image/*"
-                      onChange={handleBgImageUpload}
+                      accept="image/*,video/mp4,video/webm"
+                      onChange={handleBgMediaUpload}
                       className="sr-only"
                     />
                   </label>
-                  {bgImage && (
+                  {bgMedia && (
                     <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={bgImage}
-                        alt="Background preview"
-                        className="h-7 w-10 rounded-md border border-[var(--border-subtle)] object-cover"
-                      />
+                      {bgMedia.type === "image" ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={bgMedia.url}
+                          alt="Background preview"
+                          className="h-7 w-10 rounded-md border border-[var(--border-subtle)] object-cover"
+                        />
+                      ) : (
+                        <span className="rounded-md border border-[#C2410C]/40 bg-[#C2410C]/10 px-2 py-1 font-mono text-[10px] text-[#C2410C] uppercase dark:border-[#FF6D29]/40 dark:bg-[#FF6D29]/10 dark:text-[#FF6D29]">
+                          Video BG
+                        </span>
+                      )}
                       <button
                         type="button"
-                        onClick={handleClearBgImage}
+                        onClick={handleClearBgMedia}
                         className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] uppercase hover:text-red-500"
                       >
                         <X className="h-3 w-3" />
@@ -1284,9 +1418,127 @@ function EditorWorkspace() {
                 ? `Exporting ${exportFormat.toUpperCase()} ${exportState.progress}%`
                 : `Export ${exportFormat.toUpperCase()}`}
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCodeCopied(false);
+                setShowCodeModal(true);
+              }}
+              className="btn-tactile flex w-full items-center justify-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] py-2.5 font-display text-xs font-semibold text-[var(--text-main)] hover:border-[#C2410C] dark:hover:border-[#FF6D29]"
+            >
+              <Code2 className="h-3.5 w-3.5" />
+              Export HTML / CSS Code
+            </button>
           </div>
         </aside>
       </div>
+      {/* HTML / CSS Code Export Modal */}
+      {showCodeModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="code-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div className="bento-card flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2
+                  id="code-modal-title"
+                  className="font-display text-xl font-bold tracking-tight"
+                >
+                  HTML / CSS Embed Code
+                </h2>
+                <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                  Copy and paste into Framer, Webflow, Next.js, or any HTML page.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCodeModal(false)}
+                aria-label="Close code modal"
+                className="rounded-full border border-[var(--border-subtle)] p-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <pre className="mt-4 flex-1 overflow-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 font-mono text-[11px] leading-relaxed text-[var(--text-main)]">
+              <code>{generateHtmlCssEmbed(config)}</code>
+            </pre>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCodeModal(false)}
+                className="btn-tactile rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 font-display text-xs font-semibold text-[var(--text-main)]"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(
+                    generateHtmlCssEmbed(config)
+                  );
+                  setCodeCopied(true);
+                  setTimeout(() => setCodeCopied(false), 2000);
+                }}
+                className="btn-tactile inline-flex items-center gap-1.5 rounded-full bg-[#C2410C] px-5 py-2 font-display text-xs font-bold text-white hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
+              >
+                {codeCopied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy Code
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pro Coming Soon Modal (when NEXT_PUBLIC_UPGRADE_URL is not yet configured) */}
+      {showProModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pro-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        >
+          <div className="bento-card w-full max-w-md rounded-2xl p-6 shadow-2xl">
+            <span className="font-mono text-[10px] font-semibold tracking-wider text-[#C2410C] uppercase dark:text-[#FF6D29]">
+              Coming soon
+            </span>
+            <h2
+              id="pro-modal-title"
+              className="mt-2 font-display text-2xl font-bold tracking-tight"
+            >
+              ADT Motion Pro
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+              Pro plans are currently in preparation. Right now all studio
+              features are open to use directly in your browser.
+            </p>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowProModal(false)}
+                className="btn-tactile rounded-full bg-[#C2410C] px-5 py-2 font-display text-xs font-bold text-white hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
+              >
+                Back to Studio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Export Limit Modal (only shown when NEXT_PUBLIC_ENABLE_EXPORT_LIMIT=true) */}
       {showLimitModal && (
         <div

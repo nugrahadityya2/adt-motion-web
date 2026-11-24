@@ -1,14 +1,17 @@
 import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import {
   ASPECT_DIMENSIONS,
+  BgMediaElement,
   ExportFps,
   ExportResolution,
+  getEffectiveLoopSec,
   MotionConfig,
   MotionLayer,
   renderCompositeFrame,
   renderMotionFrame,
 } from "./motion-engine";
 import { ParsedSvg, parseSvgToUnits } from "./svg-parser";
+import type { BgMediaSource } from "@/components/MotionCanvas";
 
 const RESOLUTION_SCALE: Record<ExportResolution, number> = {
   "240p": 0.3,
@@ -45,14 +48,33 @@ function triggerDownload(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function loadImageFromSrc(src?: string | null): Promise<HTMLImageElement | null> {
-  if (!src) return null;
+async function loadBgMediaElement(
+  source?: BgMediaSource | null
+): Promise<BgMediaElement> {
+  if (!source?.url) return null;
+  if (source.type === "video") {
+    try {
+      const video = document.createElement("video");
+      video.src = source.url;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      await new Promise<void>((resolve, reject) => {
+        video.onloadeddata = () => resolve();
+        video.onerror = () => reject(new Error("Video load failed"));
+      });
+      await video.play().catch(() => {});
+      return video;
+    } catch {
+      return null;
+    }
+  }
   try {
     const img = new Image();
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = src;
+      img.onerror = () => reject(new Error("Image load failed"));
+      img.src = source.url;
     });
     return img;
   } catch {
@@ -84,7 +106,7 @@ export async function exportMotionVideo(
   fps: ExportFps = 30,
   onProgress?: (pct: number) => void,
   layers?: MotionLayer[],
-  bgImage?: string | null
+  bgMedia?: BgMediaSource | null
 ): Promise<{ actualFormat: "webm" | "mp4" }> {
   if (typeof MediaRecorder === "undefined") {
     throw new Error("MediaRecorder is not supported in this browser.");
@@ -106,7 +128,9 @@ export async function exportMotionVideo(
       ? await parseSvgToUnits(config.svgMarkup)
       : null;
   const parsedSvgsMap = await buildParsedSvgsMap(layers);
-  const bgImgEl = await loadImageFromSrc(bgImage ?? config.bgImage);
+  const bgMediaEl = await loadBgMediaElement(
+    bgMedia ?? (config.bgImage ? { url: config.bgImage, type: "image" } : null)
+  );
 
   let actualFormat: "webm" | "mp4" = format;
   let mimeType = "video/webm";
@@ -139,10 +163,7 @@ export async function exportMotionVideo(
     if (e.data.size > 0) chunks.push(e.data);
   };
 
-  const loopSec = Math.max(
-    0.5,
-    config.loopDurationSec / Math.max(0.2, config.speed)
-  );
+  const loopSec = getEffectiveLoopSec(config);
   const loopMs = loopSec * 1000;
 
   await new Promise<void>((resolve) => {
@@ -160,12 +181,12 @@ export async function exportMotionVideo(
           height,
           layers,
           config.bgColor,
-          bgImgEl,
+          bgMediaEl,
           elapsed / 1000,
           parsedSvgsMap
         );
       } else {
-        renderMotionFrame(ctx, width, height, config, t % 1, parsedSvg, bgImgEl);
+        renderMotionFrame(ctx, width, height, config, t % 1, parsedSvg, bgMediaEl);
       }
       onProgress?.(Math.round(t * 100));
 
@@ -177,6 +198,11 @@ export async function exportMotionVideo(
     };
     requestAnimationFrame(tick);
   });
+
+  if (bgMediaEl instanceof HTMLVideoElement) {
+    bgMediaEl.pause();
+    bgMediaEl.src = "";
+  }
 
   const blob = new Blob(chunks, {
     type: actualFormat === "mp4" ? "video/mp4" : "video/webm",
@@ -191,7 +217,7 @@ export async function exportToGif(
   fps: ExportFps = 24,
   onProgress?: (pct: number) => void,
   layers?: MotionLayer[],
-  bgImage?: string | null
+  bgMedia?: BgMediaSource | null
 ): Promise<void> {
   const baseDims = ASPECT_DIMENSIONS[config.aspectRatio];
   const mult = Math.min(1, RESOLUTION_SCALE[resolution] * 0.75);
@@ -209,20 +235,24 @@ export async function exportToGif(
       ? await parseSvgToUnits(config.svgMarkup)
       : null;
   const parsedSvgsMap = await buildParsedSvgsMap(layers);
-  const bgImgEl = await loadImageFromSrc(bgImage ?? config.bgImage);
-
-  const loopSec = Math.max(
-    0.5,
-    config.loopDurationSec / Math.max(0.2, config.speed)
+  const bgMediaEl = await loadBgMediaElement(
+    bgMedia ?? (config.bgImage ? { url: config.bgImage, type: "image" } : null)
   );
+
+  const loopSec = getEffectiveLoopSec(config);
   const totalFrames = Math.max(12, Math.round(loopSec * fps));
   const delayMs = Math.round(1000 / fps);
-  const isTransparent = config.bgColor === "transparent" && !bgImgEl;
+  const isTransparent = config.bgColor === "transparent" && !bgMediaEl;
 
   const gif = GIFEncoder();
 
   for (let i = 0; i < totalFrames; i++) {
     const t = i / totalFrames;
+    if (bgMediaEl instanceof HTMLVideoElement && bgMediaEl.duration > 0) {
+      bgMediaEl.currentTime = (t * loopSec) % bgMediaEl.duration;
+      await new Promise((r) => setTimeout(r, 15));
+    }
+
     if (layers && layers.length > 0) {
       renderCompositeFrame(
         ctx,
@@ -230,12 +260,12 @@ export async function exportToGif(
         h,
         layers,
         config.bgColor,
-        bgImgEl,
+        bgMediaEl,
         t * loopSec,
         parsedSvgsMap
       );
     } else {
-      renderMotionFrame(ctx, w, h, config, t, parsedSvg, bgImgEl);
+      renderMotionFrame(ctx, w, h, config, t, parsedSvg, bgMediaEl);
     }
     const { data } = ctx.getImageData(0, 0, w, h);
 
@@ -268,6 +298,11 @@ export async function exportToGif(
     if (i % 4 === 0) {
       await new Promise((r) => setTimeout(r, 0));
     }
+  }
+
+  if (bgMediaEl instanceof HTMLVideoElement) {
+    bgMediaEl.pause();
+    bgMediaEl.src = "";
   }
 
   gif.finish();

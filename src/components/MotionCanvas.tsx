@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ASPECT_DIMENSIONS,
+  BgMediaElement,
+  getEffectiveLoopSec,
   MotionConfig,
   MotionLayer,
   renderCompositeFrame,
@@ -10,18 +12,26 @@ import {
 } from "@/lib/motion-engine";
 import { ParsedSvg, parseSvgToUnits } from "@/lib/svg-parser";
 
+export type SafeZoneMode = "none" | "reels" | "tiktok" | "shorts";
+
+export interface BgMediaSource {
+  url: string;
+  type: "image" | "video";
+}
+
 interface MotionCanvasProps {
   config: MotionConfig;
   layers?: MotionLayer[];
   activeLayerId?: string;
-  bgImage?: string | null;
+  bgMedia?: BgMediaSource | null;
+  safeZone?: SafeZoneMode;
   isPlaying?: boolean;
   replayNonce?: number;
   externalCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
   onProgress?: (progress: number) => void;
   onUnitsDetected?: (count: number) => void;
   onLayerDrag?: (layerId: string, dx: number, dy: number) => void;
-  onBgImageError?: (message: string) => void;
+  onBgMediaError?: (message: string) => void;
   className?: string;
 }
 
@@ -29,23 +39,24 @@ export function MotionCanvas({
   config,
   layers,
   activeLayerId,
-  bgImage,
+  bgMedia,
+  safeZone = "none",
   isPlaying = true,
   replayNonce = 0,
   externalCanvasRef,
   onProgress,
   onUnitsDetected,
   onLayerDrag,
-  onBgImageError,
+  onBgMediaError,
   className = "",
 }: MotionCanvasProps) {
   const internalRef = useRef<HTMLCanvasElement | null>(null);
   const canvasRef = externalCanvasRef ?? internalRef;
   const parsedSvgRef = useRef<ParsedSvg | null>(null);
   const parsedSvgsMapRef = useRef<Map<string, ParsedSvg | null>>(new Map());
-  const bgImgRef = useRef<HTMLImageElement | null>(null);
-  const onBgImageErrorRef = useRef(onBgImageError);
-  onBgImageErrorRef.current = onBgImageError;
+  const bgMediaElRef = useRef<BgMediaElement>(null);
+  const onBgMediaErrorRef = useRef(onBgMediaError);
+  onBgMediaErrorRef.current = onBgMediaError;
   const [bgVersion, setBgVersion] = useState(0);
   const elapsedRef = useRef(0);
   const lastTimeRef = useRef<number | null>(null);
@@ -53,46 +64,88 @@ export function MotionCanvas({
   const [isDragging, setIsDragging] = useState(false);
 
   const dims = ASPECT_DIMENSIONS[config.aspectRatio];
-  const effectiveBgImage = bgImage ?? config.bgImage ?? null;
+  const effectiveBgMedia: BgMediaSource | null =
+    bgMedia ??
+    (config.bgImage ? { url: config.bgImage, type: "image" } : null);
 
   useEffect(() => {
     elapsedRef.current = 0;
   }, [replayNonce, config.template]);
 
-  // Load uploaded background image reliably (supports Blob URLs & Data URLs)
+  // Load uploaded background image or video
   useEffect(() => {
     let cancelled = false;
-    if (!effectiveBgImage) {
-      bgImgRef.current = null;
+    if (!effectiveBgMedia) {
+      bgMediaElRef.current = null;
       setBgVersion((v) => v + 1);
       return;
+    }
+
+    if (effectiveBgMedia.type === "video") {
+      const video = document.createElement("video");
+      video.src = effectiveBgMedia.url;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.crossOrigin = "anonymous";
+      video.onloadeddata = () => {
+        if (cancelled) return;
+        bgMediaElRef.current = video;
+        video.play().catch(() => {});
+        setBgVersion((v) => v + 1);
+      };
+      video.onerror = () => {
+        if (cancelled) return;
+        bgMediaElRef.current = null;
+        setBgVersion((v) => v + 1);
+        onBgMediaErrorRef.current?.(
+          "Video format could not be decoded. Use MP4 (H.264) or WebM."
+        );
+      };
+      return () => {
+        cancelled = true;
+        video.pause();
+        video.src = "";
+      };
     }
 
     const img = new Image();
     img.onload = () => {
       if (cancelled) return;
-      bgImgRef.current = img;
+      bgMediaElRef.current = img;
       setBgVersion((v) => v + 1);
     };
     img.onerror = () => {
       if (cancelled) return;
-      bgImgRef.current = null;
+      bgMediaElRef.current = null;
       setBgVersion((v) => v + 1);
-      onBgImageErrorRef.current?.(
-        "Format gambar tidak didukung browser. Gunakan JPG, PNG, atau WebP."
+      onBgMediaErrorRef.current?.(
+        "Image format not supported by browser. Use JPG, PNG, or WebP."
       );
     };
-    img.src = effectiveBgImage;
+    img.src = effectiveBgMedia.url;
 
     if (img.complete && img.naturalWidth > 0) {
-      bgImgRef.current = img;
+      bgMediaElRef.current = img;
       setBgVersion((v) => v + 1);
     }
 
     return () => {
       cancelled = true;
     };
-  }, [effectiveBgImage]);
+  }, [effectiveBgMedia?.url, effectiveBgMedia?.type]);
+
+  // Pause/play background video alongside animation state
+  useEffect(() => {
+    const media = bgMediaElRef.current;
+    if (media instanceof HTMLVideoElement) {
+      if (isPlaying) {
+        media.play().catch(() => {});
+      } else {
+        media.pause();
+      }
+    }
+  }, [isPlaying, bgVersion]);
 
   // Parse SVG for single-config mode or multi-layer mode
   useEffect(() => {
@@ -117,7 +170,9 @@ export function MotionCanvas({
         if (active.config.mode === "svg") {
           onUnitsDetected?.(map.get(active.id)?.units.length ?? 0);
         } else {
-          const charCount = (active.config.text.trim() || "ADT MOTION").replace(/\s/g, "").length;
+          const charCount = (
+            active.config.text.trim() || "ADT MOTION"
+          ).replace(/\s/g, "").length;
           onUnitsDetected?.(charCount);
         }
       });
@@ -128,7 +183,10 @@ export function MotionCanvas({
 
     if (config.mode !== "svg" || !config.svgMarkup) {
       parsedSvgRef.current = null;
-      const charCount = (config.text.trim() || "ADT MOTION").replace(/\s/g, "").length;
+      const charCount = (config.text.trim() || "ADT MOTION").replace(
+        /\s/g,
+        ""
+      ).length;
       onUnitsDetected?.(charCount);
       return;
     }
@@ -142,7 +200,14 @@ export function MotionCanvas({
     return () => {
       cancelled = true;
     };
-  }, [config.mode, config.svgMarkup, config.text, layers, activeLayerId, onUnitsDetected]);
+  }, [
+    config.mode,
+    config.svgMarkup,
+    config.text,
+    layers,
+    activeLayerId,
+    onUnitsDetected,
+  ]);
 
   useEffect(() => {
     let rafId = 0;
@@ -162,10 +227,7 @@ export function MotionCanvas({
       const dtSec = Math.min(0.1, (now - lastTimeRef.current) / 1000);
       lastTimeRef.current = now;
 
-      const loopSec = Math.max(
-        0.5,
-        config.loopDurationSec / Math.max(0.2, config.speed)
-      );
+      const loopSec = getEffectiveLoopSec(config);
 
       if (isPlaying) {
         elapsedRef.current += dtSec;
@@ -179,7 +241,7 @@ export function MotionCanvas({
           dims.height,
           layers,
           config.bgColor,
-          bgImgRef.current,
+          bgMediaElRef.current,
           elapsedRef.current,
           parsedSvgsMapRef.current
         );
@@ -191,7 +253,7 @@ export function MotionCanvas({
           config,
           (elapsedRef.current / loopSec) % 1,
           parsedSvgRef.current,
-          bgImgRef.current
+          bgMediaElRef.current
         );
       }
 
@@ -206,7 +268,16 @@ export function MotionCanvas({
     return () => {
       cancelAnimationFrame(rafId);
     };
-  }, [config, layers, isPlaying, dims.width, dims.height, canvasRef, onProgress, bgVersion]);
+  }, [
+    config,
+    layers,
+    isPlaying,
+    dims.width,
+    dims.height,
+    canvasRef,
+    onProgress,
+    bgVersion,
+  ]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!onLayerDrag) return;
@@ -238,20 +309,75 @@ export function MotionCanvas({
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={dims.width}
-      height={dims.height}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      className={`block max-h-full max-w-full object-contain ${
-        config.bgColor === "transparent" && !effectiveBgImage
-          ? "checkerboard-bg"
-          : ""
-      } ${onLayerDrag ? (isDragging ? "cursor-grabbing touch-none" : "cursor-grab touch-none") : ""} ${className}`}
-      aria-label={`Motion preview: ${config.mode === "svg" ? config.svgFileName : config.text}`}
-    />
+    <div className="relative flex max-h-full max-w-full items-center justify-center">
+      <canvas
+        ref={canvasRef}
+        width={dims.width}
+        height={dims.height}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        className={`block max-h-full max-w-full object-contain ${
+          config.bgColor === "transparent" && !effectiveBgMedia
+            ? "checkerboard-bg"
+            : ""
+        } ${
+          onLayerDrag
+            ? isDragging
+              ? "cursor-grabbing touch-none"
+              : "cursor-grab touch-none"
+            : ""
+        } ${className}`}
+        aria-label={`Motion preview: ${
+          config.mode === "svg" ? config.svgFileName : config.text
+        }`}
+      />
+
+      {/* Non-exported Social Safe-Zone Guide Overlay */}
+      {safeZone !== "none" && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl"
+        >
+          {/* Top header dead zone */}
+          <div
+            className="absolute inset-x-0 top-0 border-b border-dashed border-[#FF6D29]/80 bg-[#FF6D29]/15"
+            style={{ height: safeZone === "tiktok" ? "11%" : "13%" }}
+          >
+            <span className="absolute bottom-1 left-2 font-mono text-[9px] font-semibold text-[#FF6D29] uppercase">
+              {safeZone} top UI
+            </span>
+          </div>
+
+          {/* Right action buttons dead zone */}
+          <div
+            className="absolute right-0 border-l border-dashed border-[#FF6D29]/80 bg-[#FF6D29]/15"
+            style={{
+              top: safeZone === "reels" ? "46%" : "42%",
+              bottom: safeZone === "shorts" ? "20%" : "24%",
+              width: "15%",
+            }}
+          />
+
+          {/* Bottom caption & audio dead zone */}
+          <div
+            className="absolute inset-x-0 bottom-0 border-t border-dashed border-[#FF6D29]/80 bg-[#FF6D29]/15"
+            style={{
+              height:
+                safeZone === "reels"
+                  ? "24%"
+                  : safeZone === "tiktok"
+                    ? "22%"
+                    : "20%",
+            }}
+          >
+            <span className="absolute top-1 left-2 font-mono text-[9px] font-semibold text-[#FF6D29] uppercase">
+              Caption &amp; controls zone
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -61,7 +61,9 @@ export interface MotionConfig {
   aspectRatio: AspectRatio;
   circleRadius: number;
   loopDurationSec: number;
-  // 03A contextual detail controls
+  bpmEnabled?: boolean;
+  bpm?: number;
+  // Contextual motion tuning controls
   pattern: PatternOption;
   direction: DirectionOption;
   easeStyle: EaseStyleOption;
@@ -475,6 +477,17 @@ function computeUnitTransform(
   return out;
 }
 
+export type BgMediaElement = HTMLImageElement | HTMLVideoElement | null;
+
+export function getEffectiveLoopSec(config: MotionConfig): number {
+  if (config.bpmEnabled && config.bpm && config.bpm >= 40) {
+    // 4 beats (1 musical bar) scaled by speed multiplier
+    const barSec = (60 / config.bpm) * 4;
+    return Math.max(0.4, barSec / Math.max(0.25, config.speed));
+  }
+  return Math.max(0.5, config.loopDurationSec / Math.max(0.2, config.speed));
+}
+
 export function renderMotionFrame(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -482,7 +495,7 @@ export function renderMotionFrame(
   config: MotionConfig,
   normalizedTime: number,
   parsedSvg?: ParsedSvg | null,
-  bgImageEl?: HTMLImageElement | null,
+  bgMediaEl?: BgMediaElement,
   skipBackground = false
 ): void {
   ctx.save();
@@ -494,8 +507,8 @@ export function renderMotionFrame(
       ctx.fillRect(0, 0, width, height);
     }
 
-    if (bgImageEl && bgImageEl.complete && bgImageEl.naturalWidth > 0) {
-      drawCoverImage(ctx, bgImageEl, width, height);
+    if (bgMediaEl) {
+      drawCoverMedia(ctx, bgMediaEl, width, height);
     }
   }
 
@@ -537,7 +550,7 @@ export function renderCompositeFrame(
   height: number,
   layers: MotionLayer[],
   bgColor: string,
-  bgImageEl: HTMLImageElement | null,
+  bgMediaEl: BgMediaElement,
   elapsedSec: number,
   parsedSvgsMap: Map<string, ParsedSvg | null>
 ): void {
@@ -549,16 +562,13 @@ export function renderCompositeFrame(
     ctx.fillRect(0, 0, width, height);
   }
 
-  if (bgImageEl && bgImageEl.complete && bgImageEl.naturalWidth > 0) {
-    drawCoverImage(ctx, bgImageEl, width, height);
+  if (bgMediaEl) {
+    drawCoverMedia(ctx, bgMediaEl, width, height);
   }
 
   for (const layer of layers) {
     if (!layer.visible) continue;
-    const loopSec = Math.max(
-      0.5,
-      layer.config.loopDurationSec / Math.max(0.2, layer.config.speed)
-    );
+    const loopSec = getEffectiveLoopSec(layer.config);
     const t = (elapsedSec / loopSec) % 1;
     renderMotionFrame(
       ctx,
@@ -575,13 +585,26 @@ export function renderCompositeFrame(
   ctx.restore();
 }
 
-function drawCoverImage(
+function drawCoverMedia(
   ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
+  media: HTMLImageElement | HTMLVideoElement,
   w: number,
   h: number
 ) {
-  const imgRatio = img.naturalWidth / Math.max(1, img.naturalHeight);
+  let mediaW = 0;
+  let mediaH = 0;
+  if (media instanceof HTMLVideoElement) {
+    if (media.readyState < 2) return;
+    mediaW = media.videoWidth;
+    mediaH = media.videoHeight;
+  } else {
+    if (!media.complete) return;
+    mediaW = media.naturalWidth;
+    mediaH = media.naturalHeight;
+  }
+  if (mediaW <= 0 || mediaH <= 0) return;
+
+  const imgRatio = mediaW / mediaH;
   const canvasRatio = w / Math.max(1, h);
   let drawW = w;
   let drawH = h;
@@ -594,7 +617,7 @@ function drawCoverImage(
     drawH = w / imgRatio;
     dy = (h - drawH) / 2;
   }
-  ctx.drawImage(img, dx, dy, drawW, drawH);
+  ctx.drawImage(media, dx, dy, drawW, drawH);
 }
 
 function renderCircleTemplate(
