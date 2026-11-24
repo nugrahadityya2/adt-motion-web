@@ -10,6 +10,7 @@ declare module "gifenc" {
         transparent?: boolean;
         transparentIndex?: number;
         repeat?: number;
+        dispose?: number;
       }
     ): void;
     finish(): void;

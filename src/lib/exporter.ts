@@ -150,6 +150,8 @@ export async function exportToGif(
     const palette = quantize(data, 256, {
       format: isTransparent ? "rgba4444" : "rgb565",
       oneBitAlpha: isTransparent,
+      clearAlpha: isTransparent,
+      clearAlphaThreshold: 128,
     });
     const index = applyPalette(
       data,
@@ -165,6 +167,7 @@ export async function exportToGif(
       palette,
       delay: delayMs,
       repeat: 0,
+      dispose: isTransparent ? 2 : 1,
       transparent: isTransparent && transparentIndex >= 0,
       transparentIndex: transparentIndex >= 0 ? transparentIndex : 0,
     });
