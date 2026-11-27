@@ -38,6 +38,12 @@ export type WaveDensityOption = "loose" | "normal" | "tight";
 export type JitterAxisOption = "x" | "y" | "spin" | "both";
 export type ExportResolution = "240p" | "720p" | "1080p" | "4k";
 export type ExportFps = 24 | 30 | 60;
+export type BlendModeOption =
+  | "source-over"
+  | "difference"
+  | "screen"
+  | "multiply"
+  | "overlay";
 
 export interface MotionConfig {
   mode: "text" | "svg";
@@ -63,6 +69,9 @@ export interface MotionConfig {
   aspectRatio: AspectRatio;
   circleRadius: number;
   loopDurationSec: number;
+  startDelaySec?: number;
+  opacity?: number;
+  blendMode?: BlendModeOption;
   // Contextual motion tuning controls
   pattern: PatternOption;
   direction: DirectionOption;
@@ -527,6 +536,13 @@ export function renderMotionFrame(
     if (bgMediaEl) {
       drawCoverMedia(ctx, bgMediaEl, width, height);
     }
+
+    if (config.opacity !== undefined && config.opacity < 100) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, config.opacity / 100));
+    }
+    if (config.blendMode && config.blendMode !== "source-over") {
+      ctx.globalCompositeOperation = config.blendMode;
+    }
   }
 
   const ox = (config.offsetX ?? 0) * (width / 800);
@@ -589,8 +605,22 @@ export function renderCompositeFrame(
 
   for (const layer of layers) {
     if (!layer.visible) continue;
+    const delay = layer.config.startDelaySec ?? 0;
     const loopSec = getEffectiveLoopSec(layer.config);
-    const t = (elapsedSec / loopSec) % 1;
+    // Support multi-layer choreography: wait until elapsedSec passes startDelaySec
+    const cycleElapsed = elapsedSec % Math.max(loopSec, delay + loopSec);
+    if (delay > 0 && cycleElapsed < delay) continue;
+
+    const activeElapsed = Math.max(0, cycleElapsed - delay);
+    const t = (activeElapsed / loopSec) % 1;
+
+    ctx.save();
+    if (layer.config.opacity !== undefined && layer.config.opacity < 100) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, layer.config.opacity / 100));
+    }
+    if (layer.config.blendMode && layer.config.blendMode !== "source-over") {
+      ctx.globalCompositeOperation = layer.config.blendMode;
+    }
     renderMotionFrame(
       ctx,
       width,
@@ -601,6 +631,7 @@ export function renderCompositeFrame(
       null,
       true
     );
+    ctx.restore();
   }
 
   ctx.restore();

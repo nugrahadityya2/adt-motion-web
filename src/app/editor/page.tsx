@@ -23,6 +23,8 @@ import {
   Copy,
   Check,
   Shield,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import {
   BgMediaSource,
@@ -36,6 +38,7 @@ import { generateHtmlCssEmbed } from "@/lib/code-exporter";
 import {
   ASPECT_DIMENSIONS,
   AspectRatio,
+  BlendModeOption,
   DirectionOption,
   EaseStyleOption,
   ExportFps,
@@ -89,6 +92,14 @@ const BG_PRESETS: { label: string; value: string }[] = [
   { label: "Orange", value: "#FF6D29" },
 ];
 
+const BLEND_MODES: { id: BlendModeOption; label: string }[] = [
+  { id: "source-over", label: "Normal" },
+  { id: "difference", label: "Difference" },
+  { id: "screen", label: "Screen" },
+  { id: "multiply", label: "Multiply" },
+  { id: "overlay", label: "Overlay" },
+];
+
 function EditorWorkspace() {
   const searchParams = useSearchParams();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -103,6 +114,60 @@ function EditorWorkspace() {
     },
   ]);
   const [activeLayerId, setActiveLayerId] = useState("layer-1");
+  const pastRef = useRef<MotionLayer[][]>([]);
+  const futureRef = useRef<MotionLayer[][]>([]);
+  const lastHistoryPushRef = useRef<number>(0);
+  const [historyMeta, setHistoryMeta] = useState({ canUndo: false, canRedo: false });
+
+  const updateLayersWithHistory = useCallback(
+    (updater: (prev: MotionLayer[]) => MotionLayer[], coalesceMs = 350) => {
+      setLayers((prev) => {
+        const next = updater(prev);
+        if (next === prev) return prev;
+        const now = performance.now();
+        if (now - lastHistoryPushRef.current > coalesceMs) {
+          pastRef.current = [...pastRef.current.slice(-39), prev];
+        }
+        lastHistoryPushRef.current = now;
+        futureRef.current = [];
+        setHistoryMeta({
+          canUndo: pastRef.current.length > 0,
+          canRedo: false,
+        });
+        return next;
+      });
+    },
+    []
+  );
+
+  const handleUndo = useCallback(() => {
+    if (pastRef.current.length === 0) return;
+    setLayers((current) => {
+      const previous = pastRef.current[pastRef.current.length - 1];
+      pastRef.current = pastRef.current.slice(0, -1);
+      futureRef.current = [current, ...futureRef.current.slice(0, 39)];
+      setHistoryMeta({
+        canUndo: pastRef.current.length > 0,
+        canRedo: futureRef.current.length > 0,
+      });
+      return previous;
+    });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    if (futureRef.current.length === 0) return;
+    setLayers((current) => {
+      const next = futureRef.current[0];
+      futureRef.current = futureRef.current.slice(1);
+      pastRef.current = [...pastRef.current.slice(-39), current];
+      setHistoryMeta({
+        canUndo: pastRef.current.length > 0,
+        canRedo: futureRef.current.length > 0,
+      });
+      return next;
+    });
+  }, []);
+
   const [bgMedia, setBgMedia] = useState<BgMediaSource | null>(null);
   const [safeZone, setSafeZone] = useState<SafeZoneMode>("none");
   const [showCodeModal, setShowCodeModal] = useState(false);
@@ -115,7 +180,7 @@ function EditorWorkspace() {
 
   const setConfig = useCallback(
     (updater: MotionConfig | ((prev: MotionConfig) => MotionConfig)) => {
-      setLayers((prevLayers) =>
+      updateLayersWithHistory((prevLayers) =>
         prevLayers.map((layer) => {
           if (layer.id !== activeLayer.id) return layer;
           const nextConfig =
@@ -124,7 +189,7 @@ function EditorWorkspace() {
         })
       );
     },
-    [activeLayer.id]
+    [activeLayer.id, updateLayersWithHistory]
   );
 
   const [isPlaying, setIsPlaying] = useState(true);
@@ -204,22 +269,24 @@ function EditorWorkspace() {
 
   const handleLayerDrag = useCallback(
     (layerId: string, dx: number, dy: number) => {
-      setLayers((prev) =>
-        prev.map((l) =>
-          l.id === layerId
-            ? {
-                ...l,
-                config: {
-                  ...l.config,
-                  offsetX: (l.config.offsetX ?? 0) + dx,
-                  offsetY: (l.config.offsetY ?? 0) + dy,
-                },
-              }
-            : l
-        )
+      updateLayersWithHistory(
+        (prev) =>
+          prev.map((l) =>
+            l.id === layerId
+              ? {
+                  ...l,
+                  config: {
+                    ...l.config,
+                    offsetX: (l.config.offsetX ?? 0) + dx,
+                    offsetY: (l.config.offsetY ?? 0) + dy,
+                  },
+                }
+              : l
+          ),
+        500
       );
     },
-    []
+    [updateLayersWithHistory]
   );
 
   const handleAddLayer = () => {
@@ -234,39 +301,71 @@ function EditorWorkspace() {
         text: `LAYER ${idx}`,
         template: "wave",
         offsetY: 90,
+        startDelaySec: Number(((idx - 1) * 0.4).toFixed(1)),
       },
     };
-    setLayers((prev) => [...prev, newLayer]);
+    updateLayersWithHistory((prev) => [...prev, newLayer], 0);
     setActiveLayerId(newId);
   };
 
   const handleToggleLayerVisibility = (id: string) => {
-    setLayers((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l))
+    updateLayersWithHistory(
+      (prev) =>
+        prev.map((l) => (l.id === id ? { ...l, visible: !l.visible } : l)),
+      0
     );
   };
 
   const handleDeleteLayer = (id: string) => {
     if (layers.length <= 1) return;
     const next = layers.filter((l) => l.id !== id);
-    setLayers(next);
+    updateLayersWithHistory(() => next, 0);
     if (activeLayerId === id) {
       setActiveLayerId(next[0].id);
     }
   };
 
-  // Escape key closes any open modal (R-32)
+  // Keyboard shortcuts: Escape closes modals, Ctrl+Z / Ctrl+Y Undo/Redo, Space Play/Pause
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setShowCodeModal(false);
         setShowProModal(false);
         setShowLimitModal(false);
+        return;
+      }
+
+      const target = e.target as HTMLElement | null;
+      const isEditingText =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        target?.isContentEditable;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !isEditingText) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y" && !isEditingText) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      if (e.code === "Space" && !isEditingText) {
+        e.preventDefault();
+        setIsPlaying((p) => !p);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [handleUndo, handleRedo]);
 
   const handleBgMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -748,6 +847,29 @@ function EditorWorkspace() {
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex items-center gap-0.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5">
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  disabled={!historyMeta.canUndo}
+                  aria-label="Undo (Ctrl+Z)"
+                  title="Undo (Ctrl+Z)"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--text-main)] hover:bg-[var(--bg-elevated)] disabled:opacity-35"
+                >
+                  <Undo2 className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRedo}
+                  disabled={!historyMeta.canRedo}
+                  aria-label="Redo (Ctrl+Y)"
+                  title="Redo (Ctrl+Y)"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--text-main)] hover:bg-[var(--bg-elevated)] disabled:opacity-35"
+                >
+                  <Redo2 className="h-3 w-3" />
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={() => {
@@ -930,6 +1052,58 @@ function EditorWorkspace() {
               unit="%"
               onChange={(v) => updateConfig("intensity", v)}
             />
+
+            {/* Layer Choreography: Start Delay, Opacity, Blend Mode */}
+            <div className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
+              <span className="block font-mono text-[10px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
+                Layer Choreography
+              </span>
+
+              <EditorRangeSlider
+                label="Start Delay"
+                value={config.startDelaySec ?? 0}
+                min={0}
+                max={3}
+                step={0.1}
+                unit="s"
+                onChange={(v) => updateConfig("startDelaySec", v)}
+              />
+
+              <EditorRangeSlider
+                label="Opacity"
+                value={config.opacity ?? 100}
+                min={10}
+                max={100}
+                step={5}
+                unit="%"
+                onChange={(v) => updateConfig("opacity", v)}
+              />
+
+              <div>
+                <span className="mb-1.5 block font-mono text-[10px] text-[var(--text-muted)] uppercase">
+                  Blend Mode
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {BLEND_MODES.map((bm) => {
+                    const active = (config.blendMode ?? "source-over") === bm.id;
+                    return (
+                      <button
+                        key={bm.id}
+                        type="button"
+                        onClick={() => updateConfig("blendMode", bm.id)}
+                        className={`rounded-lg border px-2 py-1 font-mono text-[10px] uppercase ${
+                          active
+                            ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                            : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                        }`}
+                      >
+                        {bm.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
             {config.mode === "text" && (
               <div className="space-y-3 border-t border-[var(--border-subtle)] pt-3">
