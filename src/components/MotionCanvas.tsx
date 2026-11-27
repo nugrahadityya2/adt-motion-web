@@ -4,11 +4,13 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ASPECT_DIMENSIONS,
   BgMediaElement,
+  CursorModeOption,
   getEffectiveLoopSec,
   MotionConfig,
   MotionLayer,
   renderCompositeFrame,
   renderMotionFrame,
+  StageBackdrop,
 } from "@/lib/motion-engine";
 import { ParsedSvg, parseSvgToUnits } from "@/lib/svg-parser";
 
@@ -24,11 +26,15 @@ interface MotionCanvasProps {
   layers?: MotionLayer[];
   activeLayerId?: string;
   bgMedia?: BgMediaSource | null;
+  backdrop?: StageBackdrop | null;
   safeZone?: SafeZoneMode;
+  cursorMode?: CursorModeOption;
+  audioEnergyRef?: React.RefObject<number>;
+  scrubTimeSec?: number | null;
   isPlaying?: boolean;
   replayNonce?: number;
   externalCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
-  onProgress?: (progress: number) => void;
+  onProgress?: (progress: number, elapsedSec: number) => void;
   onUnitsDetected?: (count: number) => void;
   onLayerDrag?: (layerId: string, dx: number, dy: number) => void;
   onBgMediaError?: (message: string) => void;
@@ -40,7 +46,11 @@ export function MotionCanvas({
   layers,
   activeLayerId,
   bgMedia,
+  backdrop,
   safeZone = "none",
+  cursorMode = "off",
+  audioEnergyRef,
+  scrubTimeSec = null,
   isPlaying = true,
   replayNonce = 0,
   externalCanvasRef,
@@ -61,6 +71,7 @@ export function MotionCanvas({
   const elapsedRef = useRef(0);
   const lastTimeRef = useRef<number | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const cursorRef = useRef({ x: 0, y: 0, active: false });
   const [isDragging, setIsDragging] = useState(false);
 
   const dims = ASPECT_DIMENSIONS[config.aspectRatio];
@@ -71,6 +82,12 @@ export function MotionCanvas({
   useEffect(() => {
     elapsedRef.current = 0;
   }, [replayNonce, config.template]);
+
+  useEffect(() => {
+    if (scrubTimeSec !== null) {
+      elapsedRef.current = scrubTimeSec;
+    }
+  }, [scrubTimeSec]);
 
   // Load uploaded background image or video
   useEffect(() => {
@@ -229,10 +246,12 @@ export function MotionCanvas({
 
       const loopSec = getEffectiveLoopSec(config);
 
-      if (isPlaying) {
+      if (isPlaying && scrubTimeSec === null) {
         elapsedRef.current += dtSec;
-        onProgress?.((elapsedRef.current / loopSec) % 1);
       }
+      onProgress?.((elapsedRef.current / loopSec) % 1, elapsedRef.current);
+
+      const audioEnergy = audioEnergyRef?.current ?? 0;
 
       if (layers && layers.length > 0) {
         renderCompositeFrame(
@@ -243,7 +262,15 @@ export function MotionCanvas({
           config.bgColor,
           bgMediaElRef.current,
           elapsedRef.current,
-          parsedSvgsMapRef.current
+          parsedSvgsMapRef.current,
+          backdrop,
+          {
+            audioEnergy,
+            cursorMode,
+            cursorX: cursorRef.current.x,
+            cursorY: cursorRef.current.y,
+            cursorActive: cursorRef.current.active,
+          }
         );
       } else {
         renderMotionFrame(
@@ -257,7 +284,7 @@ export function MotionCanvas({
         );
       }
 
-      if (isPlaying) {
+      if (isPlaying || cursorMode !== "off") {
         rafId = requestAnimationFrame(draw);
       }
     };
@@ -271,11 +298,15 @@ export function MotionCanvas({
   }, [
     config,
     layers,
+    backdrop,
+    cursorMode,
+    scrubTimeSec,
     isPlaying,
     dims.width,
     dims.height,
     canvasRef,
     onProgress,
+    audioEnergyRef,
     bgVersion,
   ]);
 
@@ -287,16 +318,25 @@ export function MotionCanvas({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!onLayerDrag || !dragRef.current || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    if (canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        cursorRef.current = {
+          x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+          y: ((e.clientY - rect.top) / rect.height) * 2 - 1,
+          active: true,
+        };
 
-    const dx = ((e.clientX - dragRef.current.x) / rect.width) * 800;
-    const dy = ((e.clientY - dragRef.current.y) / rect.height) * 800;
-    dragRef.current = { x: e.clientX, y: e.clientY };
+        if (onLayerDrag && dragRef.current) {
+          const dx = ((e.clientX - dragRef.current.x) / rect.width) * 800;
+          const dy = ((e.clientY - dragRef.current.y) / rect.height) * 800;
+          dragRef.current = { x: e.clientX, y: e.clientY };
 
-    const targetId = activeLayerId ?? layers?.[0]?.id ?? "layer-1";
-    onLayerDrag(targetId, dx, dy);
+          const targetId = activeLayerId ?? layers?.[0]?.id ?? "layer-1";
+          onLayerDrag(targetId, dx, dy);
+        }
+      }
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -306,6 +346,10 @@ export function MotionCanvas({
     }
     dragRef.current = null;
     setIsDragging(false);
+  };
+
+  const handlePointerLeave = () => {
+    cursorRef.current.active = false;
   };
 
   return (
@@ -325,8 +369,11 @@ export function MotionCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
         className={`block h-full w-full ${
-          config.bgColor === "transparent" && !effectiveBgMedia
+          config.bgColor === "transparent" &&
+          !effectiveBgMedia &&
+          !backdrop?.useGradient
             ? "checkerboard-bg"
             : ""
         } ${
@@ -347,7 +394,6 @@ export function MotionCanvas({
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl"
         >
-          {/* Top header dead zone */}
           <div
             className="absolute inset-x-0 top-0 border-b border-dashed border-[#FF6D29]/80 bg-[#FF6D29]/15"
             style={{ height: safeZone === "tiktok" ? "11%" : "13%" }}
@@ -357,7 +403,6 @@ export function MotionCanvas({
             </span>
           </div>
 
-          {/* Right action buttons dead zone */}
           <div
             className="absolute right-0 border-l border-dashed border-[#FF6D29]/80 bg-[#FF6D29]/15"
             style={{
@@ -367,7 +412,6 @@ export function MotionCanvas({
             }}
           />
 
-          {/* Bottom caption & audio dead zone */}
           <div
             className="absolute inset-x-0 bottom-0 border-t border-dashed border-[#FF6D29]/80 bg-[#FF6D29]/15"
             style={{

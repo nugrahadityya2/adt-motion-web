@@ -45,6 +45,25 @@ export type BlendModeOption =
   | "multiply"
   | "overlay";
 
+export type CursorModeOption = "off" | "magnetic" | "repel" | "tilt";
+
+export interface StageBackdrop {
+  useGradient: boolean;
+  gradientA: string;
+  gradientB: string;
+  gradientAngle: number;
+  animateGradient: boolean;
+  grain: number; // 0..60
+}
+
+export interface FrameInteraction {
+  audioEnergy?: number; // 0..1 from Web Audio AnalyserNode
+  cursorMode?: CursorModeOption;
+  cursorX?: number; // -1..1 normalized canvas coords
+  cursorY?: number; // -1..1 normalized canvas coords
+  cursorActive?: boolean;
+}
+
 export interface MotionConfig {
   mode: "text" | "svg";
   text: string;
@@ -581,6 +600,89 @@ export function renderMotionFrame(
   ctx.restore();
 }
 
+let cachedGrainCanvas: HTMLCanvasElement | null = null;
+
+function getGrainCanvas(): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  if (cachedGrainCanvas) return cachedGrainCanvas;
+  const c = document.createElement("canvas");
+  c.width = 160;
+  c.height = 160;
+  const gctx = c.getContext("2d");
+  if (!gctx) return null;
+  const img = gctx.createImageData(160, 160);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = Math.floor(Math.random() * 255);
+    d[i] = v;
+    d[i + 1] = v;
+    d[i + 2] = v;
+    d[i + 3] = 255;
+  }
+  gctx.putImageData(img, 0, 0);
+  cachedGrainCanvas = c;
+  return c;
+}
+
+function drawStageBackdrop(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  bgColor: string,
+  bgMediaEl: BgMediaElement,
+  backdrop?: StageBackdrop | null,
+  elapsedSec = 0
+) {
+  if (backdrop?.useGradient) {
+    const angleDeg =
+      backdrop.gradientAngle + (backdrop.animateGradient ? elapsedSec * 36 : 0);
+    const rad = (angleDeg * Math.PI) / 180;
+    const cx = width / 2;
+    const cy = height / 2;
+    const r = Math.hypot(width, height) / 2;
+    const grad = ctx.createLinearGradient(
+      cx - Math.cos(rad) * r,
+      cy - Math.sin(rad) * r,
+      cx + Math.cos(rad) * r,
+      cy + Math.sin(rad) * r
+    );
+    grad.addColorStop(0, backdrop.gradientA);
+    grad.addColorStop(1, backdrop.gradientB);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  } else if (bgColor && bgColor !== "transparent") {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  if (bgMediaEl) {
+    drawCoverMedia(ctx, bgMediaEl, width, height);
+  }
+}
+
+function drawFilmGrain(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  grain: number,
+  elapsedSec: number
+) {
+  if (grain <= 0) return;
+  const grainCanvas = getGrainCanvas();
+  if (!grainCanvas) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(0.45, (grain / 100) * 0.55);
+  ctx.globalCompositeOperation = "overlay";
+  const ox = Math.floor((elapsedSec * 97) % 160);
+  const oy = Math.floor((elapsedSec * 61) % 160);
+  for (let x = -ox; x < width; x += 160) {
+    for (let y = -oy; y < height; y += 160) {
+      ctx.drawImage(grainCanvas, x, y);
+    }
+  }
+  ctx.restore();
+}
+
 export function renderCompositeFrame(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -589,25 +691,25 @@ export function renderCompositeFrame(
   bgColor: string,
   bgMediaEl: BgMediaElement,
   elapsedSec: number,
-  parsedSvgsMap: Map<string, ParsedSvg | null>
+  parsedSvgsMap: Map<string, ParsedSvg | null>,
+  backdrop?: StageBackdrop | null,
+  interaction?: FrameInteraction
 ): void {
   ctx.save();
   ctx.clearRect(0, 0, width, height);
 
-  if (bgColor && bgColor !== "transparent") {
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, width, height);
-  }
+  drawStageBackdrop(ctx, width, height, bgColor, bgMediaEl, backdrop, elapsedSec);
 
-  if (bgMediaEl) {
-    drawCoverMedia(ctx, bgMediaEl, width, height);
-  }
+  const audioBoost = interaction?.audioEnergy ?? 0;
+  const cursorMode = interaction?.cursorMode ?? "off";
+  const cActive = interaction?.cursorActive ?? false;
+  const cxNorm = interaction?.cursorX ?? 0;
+  const cyNorm = interaction?.cursorY ?? 0;
 
   for (const layer of layers) {
     if (!layer.visible) continue;
     const delay = layer.config.startDelaySec ?? 0;
     const loopSec = getEffectiveLoopSec(layer.config);
-    // Support multi-layer choreography: wait until elapsedSec passes startDelaySec
     const cycleElapsed = elapsedSec % Math.max(loopSec, delay + loopSec);
     if (delay > 0 && cycleElapsed < delay) continue;
 
@@ -621,17 +723,48 @@ export function renderCompositeFrame(
     if (layer.config.blendMode && layer.config.blendMode !== "source-over") {
       ctx.globalCompositeOperation = layer.config.blendMode;
     }
+
+    // Apply Audio-Reactive bass scale pulse & Cursor-Reactive transform around center
+    if (audioBoost > 0.01 || (cActive && cursorMode !== "off")) {
+      ctx.translate(width / 2, height / 2);
+      if (audioBoost > 0.01) {
+        const s = 1 + audioBoost * 0.24;
+        ctx.scale(s, s);
+      }
+      if (cActive && cursorMode === "magnetic") {
+        ctx.translate(cxNorm * width * 0.14, cyNorm * height * 0.14);
+      } else if (cActive && cursorMode === "repel") {
+        ctx.translate(-cxNorm * width * 0.16, -cyNorm * height * 0.16);
+      } else if (cActive && cursorMode === "tilt") {
+        ctx.transform(1, cyNorm * 0.16, cxNorm * 0.22, 1, 0, 0);
+        ctx.rotate(cxNorm * 0.08);
+      }
+      ctx.translate(-width / 2, -height / 2);
+    }
+
+    const effectiveConfig =
+      audioBoost > 0.02
+        ? {
+            ...layer.config,
+            intensity: Math.min(240, layer.config.intensity + audioBoost * 95),
+          }
+        : layer.config;
+
     renderMotionFrame(
       ctx,
       width,
       height,
-      layer.config,
+      effectiveConfig,
       t,
       parsedSvgsMap.get(layer.id) ?? null,
       null,
       true
     );
     ctx.restore();
+  }
+
+  if (backdrop && backdrop.grain > 0) {
+    drawFilmGrain(ctx, width, height, backdrop.grain, elapsedSec);
   }
 
   ctx.restore();

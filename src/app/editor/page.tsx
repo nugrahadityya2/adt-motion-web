@@ -25,6 +25,9 @@ import {
   Shield,
   Undo2,
   Redo2,
+  Camera,
+  Volume2,
+  MousePointer2,
 } from "lucide-react";
 import {
   BgMediaSource,
@@ -39,16 +42,19 @@ import {
   ASPECT_DIMENSIONS,
   AspectRatio,
   BlendModeOption,
+  CursorModeOption,
   DirectionOption,
   EaseStyleOption,
   ExportFps,
   ExportResolution,
   FontOption,
   FontWeightOption,
+  getEffectiveLoopSec,
   JitterAxisOption,
   MotionConfig,
   MotionLayer,
   MotionTemplate,
+  StageBackdrop,
   TEMPLATE_CATEGORIES,
   TEMPLATE_META,
   type TemplateCategory,
@@ -58,7 +64,11 @@ import {
   DEFAULT_CONFIG,
   SAMPLE_SVGS,
 } from "@/lib/presets";
-import { exportMotionVideo, exportToGif } from "@/lib/exporter";
+import {
+  exportCanvasSnapshotPng,
+  exportMotionVideo,
+  exportToGif,
+} from "@/lib/exporter";
 import {
   getDailyExportLimit,
   getRemainingExports,
@@ -169,6 +179,21 @@ function EditorWorkspace() {
   }, []);
 
   const [bgMedia, setBgMedia] = useState<BgMediaSource | null>(null);
+  const [backdrop, setBackdrop] = useState<StageBackdrop>({
+    useGradient: false,
+    gradientA: "#161316",
+    gradientB: "#C2410C",
+    gradientAngle: 135,
+    animateGradient: true,
+    grain: 0,
+  });
+  const [cursorMode, setCursorMode] = useState<CursorModeOption>("off");
+  const [audioTrack, setAudioTrack] = useState<{ url: string; name: string } | null>(null);
+  const audioEnergyRef = useRef<number>(0);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [scrubTimeSec, setScrubTimeSec] = useState<number | null>(null);
+  const [playheadSec, setPlayheadSec] = useState(0);
   const [safeZone, setSafeZone] = useState<SafeZoneMode>("none");
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -254,11 +279,112 @@ function EditorWorkspace() {
     }));
   }, [searchParams]);
 
-  const handleProgress = useCallback((p: number) => {
-    if (progressBarRef.current) {
-      progressBarRef.current.style.width = `${Math.round(p * 100)}%`;
+  const totalTimelineSec = Math.max(
+    1,
+    ...layers.map(
+      (l) => (l.config.startDelaySec ?? 0) + getEffectiveLoopSec(l.config)
+    )
+  );
+
+  const handleProgress = useCallback(
+    (p: number, elapsedSec: number) => {
+      if (progressBarRef.current) {
+        progressBarRef.current.style.width = `${Math.round(p * 100)}%`;
+      }
+      setPlayheadSec(elapsedSec % totalTimelineSec);
+    },
+    [totalTimelineSec]
+  );
+
+  // Audio-Reactive Web Audio Analyser loop
+  useEffect(() => {
+    if (!audioTrack) {
+      audioEnergyRef.current = 0;
+      if (audioElRef.current) {
+        audioElRef.current.pause();
+        audioElRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+      return;
     }
-  }, []);
+
+    const audio = new Audio(audioTrack.url);
+    audio.loop = true;
+    audio.crossOrigin = "anonymous";
+    audioElRef.current = audio;
+
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioCtx();
+    audioCtxRef.current = ctx;
+
+    const source = ctx.createMediaElementSource(audio);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    analyser.connect(ctx.destination);
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    let rafId = 0;
+    const sample = () => {
+      analyser.getByteFrequencyData(dataArray);
+      // Focus on bass + low-mid frequencies (bins 0..16)
+      let sum = 0;
+      for (let i = 0; i < 16; i++) sum += dataArray[i];
+      const avg = sum / (16 * 255);
+      audioEnergyRef.current = audioEnergyRef.current * 0.65 + avg * 0.35;
+      rafId = requestAnimationFrame(sample);
+    };
+    rafId = requestAnimationFrame(sample);
+
+    if (isPlaying) {
+      ctx.resume().catch(() => {});
+      audio.play().catch(() => {});
+    }
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      audio.pause();
+      ctx.close().catch(() => {});
+      audioEnergyRef.current = 0;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioTrack]);
+
+  // Sync audio playback with Play/Pause
+  useEffect(() => {
+    const audio = audioElRef.current;
+    const ctx = audioCtxRef.current;
+    if (!audio) return;
+    if (isPlaying && scrubTimeSec === null) {
+      ctx?.resume().catch(() => {});
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying, scrubTimeSec]);
+
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (audioTrack?.url.startsWith("blob:")) {
+      URL.revokeObjectURL(audioTrack.url);
+    }
+    const url = URL.createObjectURL(file);
+    setAudioTrack({ url, name: file.name });
+    setIsPlaying(true);
+    setScrubTimeSec(null);
+    e.target.value = "";
+  };
+
+  const handleClearAudio = () => {
+    if (audioTrack?.url.startsWith("blob:")) {
+      URL.revokeObjectURL(audioTrack.url);
+    }
+    setAudioTrack(null);
+  };
 
   const updateConfig = <K extends keyof MotionConfig>(
     key: K,
@@ -450,7 +576,8 @@ function EditorWorkspace() {
           exportFps,
           (progress) => setExportState((s) => ({ ...s, progress })),
           layers,
-          bgMedia
+          bgMedia,
+          backdrop
         );
         recordExportUsage();
         setExportState({ active: false, progress: 100, notice: "GIF exported!", error: null });
@@ -462,7 +589,8 @@ function EditorWorkspace() {
           exportFps,
           (progress) => setExportState((s) => ({ ...s, progress })),
           layers,
-          bgMedia
+          bgMedia,
+          backdrop
         );
         recordExportUsage();
         const note =
@@ -963,7 +1091,11 @@ function EditorWorkspace() {
                 layers={layers}
                 activeLayerId={activeLayer.id}
                 bgMedia={bgMedia}
+                backdrop={backdrop}
                 safeZone={safeZone}
+                cursorMode={cursorMode}
+                audioEnergyRef={audioEnergyRef}
+                scrubTimeSec={scrubTimeSec}
                 isPlaying={isPlaying}
                 replayNonce={replayNonce}
                 externalCanvasRef={canvasRef}
@@ -978,35 +1110,95 @@ function EditorWorkspace() {
             </div>
           </div>
 
-          {/* Playback & Detected Units Strip */}
-          <div className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3.5 py-2">
-            <button
-              type="button"
-              onClick={() => setIsPlaying((p) => !p)}
-              aria-label={isPlaying ? "Pause animation" : "Play animation"}
-              className="btn-tactile inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#C2410C] text-white hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
-            >
-              {isPlaying ? (
-                <Pause className="h-3.5 w-3.5" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-            </button>
+          {/* Visual Mini-Timeline + Scrubbing + Snapshot PNG */}
+          <div className="mt-3 space-y-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3.5 py-2.5">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setScrubTimeSec(null);
+                  setIsPlaying((p) => !p);
+                }}
+                aria-label={isPlaying ? "Pause animation" : "Play animation"}
+                className="btn-tactile inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C2410C] text-white hover:opacity-90 dark:bg-[#FF6D29] dark:text-[#161316]"
+              >
+                {isPlaying && scrubTimeSec === null ? (
+                  <Pause className="h-3.5 w-3.5" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+              </button>
 
-            <div className="flex-1">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-                <div
-                  ref={progressBarRef}
-                  className="h-full rounded-full bg-[#C2410C] transition-none dark:bg-[#FF6D29]"
-                  style={{ width: "0%" }}
+              <div className="flex-1">
+                <input
+                  type="range"
+                  aria-label="Scrub timeline"
+                  min={0}
+                  max={Number(totalTimelineSec.toFixed(2))}
+                  step={0.02}
+                  value={Number((scrubTimeSec ?? playheadSec).toFixed(2))}
+                  onChange={(e) => {
+                    setIsPlaying(false);
+                    setScrubTimeSec(Number(e.target.value));
+                  }}
+                  className="tm-slider"
                 />
+                <div ref={progressBarRef} className="hidden" />
               </div>
+
+              <span className="shrink-0 font-mono text-[10px] text-[var(--text-muted)] tabular-nums">
+                {(scrubTimeSec ?? playheadSec).toFixed(1)}s /{" "}
+                {totalTimelineSec.toFixed(1)}s
+              </span>
+
+              <button
+                type="button"
+                onClick={() => exportCanvasSnapshotPng(canvasRef.current, config)}
+                title="Save current frame as PNG"
+                className="btn-tactile inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1.5 font-mono text-[10px] text-[var(--text-main)] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]"
+              >
+                <Camera className="h-3 w-3" />
+                PNG
+              </button>
             </div>
 
-            <span className="hidden font-mono text-[10px] text-[var(--text-muted)] sm:inline">
-              {config.mode === "svg" ? config.svgFileName : "TEXT"} · {unitsCount}{" "}
-              animatable units
-            </span>
+            {/* Layer Delay Bars Visualization */}
+            {layers.length > 0 && (
+              <div className="space-y-1">
+                {layers.map((l) => {
+                  const delay = l.config.startDelaySec ?? 0;
+                  const dur = getEffectiveLoopSec(l.config);
+                  const leftPct = Math.min(100, (delay / totalTimelineSec) * 100);
+                  const widthPct = Math.max(
+                    8,
+                    Math.min(100 - leftPct, (dur / totalTimelineSec) * 100)
+                  );
+                  const isAct = l.id === activeLayer.id;
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={() => setActiveLayerId(l.id)}
+                      className="relative h-3.5 w-full cursor-pointer overflow-hidden rounded-md bg-[var(--bg-elevated)]"
+                      title={`${l.name}: starts at ${delay}s`}
+                    >
+                      <div
+                        className={`absolute top-0 bottom-0 rounded-md px-1.5 font-mono text-[9px] leading-[14px] ${
+                          isAct
+                            ? "bg-[#C2410C] text-white dark:bg-[#FF6D29] dark:text-[#161316]"
+                            : "bg-black/20 text-[var(--text-main)] dark:bg-white/20"
+                        }`}
+                        style={{
+                          left: `${leftPct}%`,
+                          width: `${widthPct}%`,
+                        }}
+                      >
+                        {l.name}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
@@ -1239,6 +1431,164 @@ function EditorWorkspace() {
                       </button>
                     </>
                   )}
+                </div>
+
+                {/* Animated Gradient & Film Grain */}
+                <div className="mt-3 space-y-2.5 border-t border-[var(--border-subtle)] pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
+                      Gradient &amp; Grain
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBackdrop((b) => ({
+                          ...b,
+                          useGradient: !b.useGradient,
+                        }))
+                      }
+                      className={`rounded-lg border px-2 py-0.5 font-mono text-[10px] uppercase ${
+                        backdrop.useGradient
+                          ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                          : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                      }`}
+                    >
+                      Gradient: {backdrop.useGradient ? "ON" : "OFF"}
+                    </button>
+                  </div>
+
+                  {backdrop.useGradient && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="color"
+                            aria-label="Gradient start color"
+                            value={backdrop.gradientA}
+                            onChange={(e) =>
+                              setBackdrop((b) => ({
+                                ...b,
+                                gradientA: e.target.value,
+                              }))
+                            }
+                            className="h-6 w-6 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-0.5"
+                          />
+                          <input
+                            type="color"
+                            aria-label="Gradient end color"
+                            value={backdrop.gradientB}
+                            onChange={(e) =>
+                              setBackdrop((b) => ({
+                                ...b,
+                                gradientB: e.target.value,
+                              }))
+                            }
+                            className="h-6 w-6 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-0.5"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setBackdrop((b) => ({
+                              ...b,
+                              animateGradient: !b.animateGradient,
+                            }))
+                          }
+                          className={`rounded-lg border px-2 py-0.5 font-mono text-[10px] uppercase ${
+                            backdrop.animateGradient
+                              ? "border-[#C2410C] bg-[#C2410C]/15 text-[#C2410C] dark:border-[#FF6D29] dark:bg-[#FF6D29]/15 dark:text-[#FF6D29]"
+                              : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                          }`}
+                        >
+                          Flow: {backdrop.animateGradient ? "ON" : "OFF"}
+                        </button>
+                      </div>
+                      <EditorRangeSlider
+                        label="Angle"
+                        value={backdrop.gradientAngle}
+                        min={0}
+                        max={360}
+                        step={5}
+                        unit="°"
+                        onChange={(v) =>
+                          setBackdrop((b) => ({ ...b, gradientAngle: v }))
+                        }
+                      />
+                    </div>
+                  )}
+
+                  <EditorRangeSlider
+                    label="Film Grain"
+                    value={backdrop.grain}
+                    min={0}
+                    max={60}
+                    step={2}
+                    unit="%"
+                    onChange={(v) => setBackdrop((b) => ({ ...b, grain: v }))}
+                  />
+                </div>
+
+                {/* Audio-Reactive & Cursor-Reactive */}
+                <div className="mt-3 space-y-3 border-t border-[var(--border-subtle)] pt-3">
+                  <div className="space-y-1.5">
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
+                      <Volume2 className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
+                      Audio-Reactive
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1.5 font-mono text-[10px] uppercase hover:border-[#C2410C] dark:hover:border-[#FF6D29]">
+                        <Upload className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
+                        <span>
+                          {audioTrack ? "Change Audio" : "Upload MP3 / WAV"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          onChange={handleAudioUpload}
+                          className="sr-only"
+                        />
+                      </label>
+                      {audioTrack && (
+                        <>
+                          <span className="max-w-[120px] truncate rounded-md bg-[#C2410C]/10 px-2 py-1 font-mono text-[10px] text-[#C2410C] dark:bg-[#FF6D29]/10 dark:text-[#FF6D29]">
+                            {audioTrack.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleClearAudio}
+                            className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1.5 font-mono text-[10px] text-[var(--text-muted)] uppercase hover:text-red-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium tracking-wider text-[var(--text-muted)] uppercase">
+                      <MousePointer2 className="h-3 w-3 text-[#C2410C] dark:text-[#FF6D29]" />
+                      Cursor-Reactive
+                    </span>
+                    <div className="grid grid-cols-4 gap-1">
+                      {(["off", "magnetic", "repel", "tilt"] as CursorModeOption[]).map(
+                        (cm) => (
+                          <button
+                            key={cm}
+                            type="button"
+                            onClick={() => setCursorMode(cm)}
+                            className={`rounded-lg border py-1 font-mono text-[10px] uppercase ${
+                              cursorMode === cm
+                                ? "border-[#C2410C] bg-[#C2410C] text-white dark:border-[#FF6D29] dark:bg-[#FF6D29] dark:text-[#161316]"
+                                : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                            }`}
+                          >
+                            {cm}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1626,7 +1976,7 @@ function EditorWorkspace() {
             </div>
 
             <pre className="mt-4 flex-1 overflow-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-4 font-mono text-[11px] leading-relaxed text-[var(--text-main)]">
-              <code>{generateHtmlCssEmbed(config)}</code>
+              <code>{generateHtmlCssEmbed(config, cursorMode)}</code>
             </pre>
 
             <div className="mt-4 flex items-center justify-end gap-2">
@@ -1641,7 +1991,7 @@ function EditorWorkspace() {
                 type="button"
                 onClick={async () => {
                   await navigator.clipboard.writeText(
-                    generateHtmlCssEmbed(config)
+                    generateHtmlCssEmbed(config, cursorMode)
                   );
                   setCodeCopied(true);
                   setTimeout(() => setCodeCopied(false), 2000);

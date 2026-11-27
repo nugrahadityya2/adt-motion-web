@@ -1,4 +1,5 @@
 import {
+  CursorModeOption,
   FONT_MAP,
   getEffectiveLoopSec,
   MotionConfig,
@@ -81,7 +82,10 @@ function getKeyframesForTemplate(config: MotionConfig): string {
   }
 }
 
-export function generateHtmlCssEmbed(config: MotionConfig): string {
+export function generateHtmlCssEmbed(
+  config: MotionConfig,
+  cursorMode: CursorModeOption = "off"
+): string {
   const duration = getEffectiveLoopSec(config).toFixed(2);
   const staggerMs = config.stagger;
   const text = config.text.trim() || "ADT MOTION";
@@ -137,7 +141,31 @@ export function generateHtmlCssEmbed(config: MotionConfig): string {
     ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${fontQuery}:ital,wght@0,400;0,500;0,700;0,800;1,400;1,700&display=swap" />`
     : `<!-- Custom font "${config.font}": load your .woff2/.ttf via @font-face in your CSS -->`;
 
-  return `<!-- ADT Motion HTML + CSS Embed -->
+  const cursorScript =
+    cursorMode !== "off"
+      ? `\n<script>
+  (function () {
+    const el = document.querySelector('.adt-motion');
+    if (!el) return;
+    el.style.transition = 'transform 160ms ease-out';
+    el.addEventListener('pointermove', (e) => {
+      const r = el.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width) * 2 - 1;
+      const y = ((e.clientY - r.top) / r.height) * 2 - 1;
+      ${
+        cursorMode === "magnetic"
+          ? "el.style.transform = `translate(${x * 18}px, ${y * 18}px)`;"
+          : cursorMode === "repel"
+            ? "el.style.transform = `translate(${-x * 20}px, ${-y * 20}px)`;"
+            : "el.style.transform = `perspective(600px) rotateY(${x * 14}deg) rotateX(${-y * 14}deg)`;"
+      }
+    });
+    el.addEventListener('pointerleave', () => { el.style.transform = 'none'; });
+  })();
+</script>`
+      : "";
+
+  return `<!-- ADT Motion HTML + CSS${cursorMode !== "off" ? " + Cursor JS" : ""} Embed -->
 ${fontHeader}
 <style>
   .adt-motion {
@@ -170,5 +198,5 @@ ${fontHeader}
 </style>
 <div class="adt-motion" aria-label="${escapeHtml(text.replace(/\n/g, " "))}">
 ${htmlLines}
-</div>`;
+</div>${cursorScript}`;
 }

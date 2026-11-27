@@ -9,6 +9,7 @@ import {
   MotionLayer,
   renderCompositeFrame,
   renderMotionFrame,
+  StageBackdrop,
 } from "./motion-engine";
 import { ParsedSvg, parseSvgToUnits } from "./svg-parser";
 import type { BgMediaSource } from "@/components/MotionCanvas";
@@ -99,6 +100,17 @@ async function buildParsedSvgsMap(
   return map;
 }
 
+export function exportCanvasSnapshotPng(
+  canvas: HTMLCanvasElement | null,
+  config: MotionConfig
+): void {
+  if (!canvas) return;
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    triggerDownload(blob, buildExportFilename(config, "png"));
+  }, "image/png");
+}
+
 export async function exportMotionVideo(
   config: MotionConfig,
   format: "webm" | "mp4",
@@ -106,7 +118,8 @@ export async function exportMotionVideo(
   fps: ExportFps = 30,
   onProgress?: (pct: number) => void,
   layers?: MotionLayer[],
-  bgMedia?: BgMediaSource | null
+  bgMedia?: BgMediaSource | null,
+  backdrop?: StageBackdrop | null
 ): Promise<{ actualFormat: "webm" | "mp4" }> {
   if (typeof MediaRecorder === "undefined") {
     throw new Error("MediaRecorder is not supported in this browser.");
@@ -183,7 +196,8 @@ export async function exportMotionVideo(
           config.bgColor,
           bgMediaEl,
           elapsed / 1000,
-          parsedSvgsMap
+          parsedSvgsMap,
+          backdrop
         );
       } else {
         renderMotionFrame(ctx, width, height, config, t % 1, parsedSvg, bgMediaEl);
@@ -217,7 +231,8 @@ export async function exportToGif(
   fps: ExportFps = 24,
   onProgress?: (pct: number) => void,
   layers?: MotionLayer[],
-  bgMedia?: BgMediaSource | null
+  bgMedia?: BgMediaSource | null,
+  backdrop?: StageBackdrop | null
 ): Promise<void> {
   const baseDims = ASPECT_DIMENSIONS[config.aspectRatio];
   const mult = Math.min(1, RESOLUTION_SCALE[resolution] * 0.75);
@@ -242,7 +257,8 @@ export async function exportToGif(
   const loopSec = getEffectiveLoopSec(config);
   const totalFrames = Math.max(12, Math.round(loopSec * fps));
   const delayMs = Math.round(1000 / fps);
-  const isTransparent = config.bgColor === "transparent" && !bgMediaEl;
+  const isTransparent =
+    config.bgColor === "transparent" && !bgMediaEl && !backdrop?.useGradient;
 
   const gif = GIFEncoder();
 
@@ -262,7 +278,8 @@ export async function exportToGif(
         config.bgColor,
         bgMediaEl,
         t * loopSec,
-        parsedSvgsMap
+        parsedSvgsMap,
+        backdrop
       );
     } else {
       renderMotionFrame(ctx, w, h, config, t, parsedSvg, bgMediaEl);
